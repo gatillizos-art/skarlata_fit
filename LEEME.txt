@@ -1,0 +1,11 @@
+RH Calisthenics - app instalable
+
+1) Sube TODO el contenido de esta carpeta a un repositorio de GitHub (index.html, sw.js, manifest.webmanifest y la carpeta icons), manteniendo la misma estructura.
+2) En el repositorio: Settings > Pages > Deploy from a branch > main > / (root) > Save.
+3) Espera 1 o 2 minutos y abre en el celular la dirección que te da GitHub Pages (https://TU-USUARIO.github.io/NOMBRE-DEL-REPO/).
+4) Android (Chrome): menú de tres puntos > "Instalar app" o "Agregar a la pantalla de inicio".
+   iPhone (Safari): botón Compartir > "Agregar a inicio".
+5) Abre la app desde el ícono nuevo. Registra tus datos desde ahí, no desde el navegador: en iPhone, la app instalada guarda sus datos aparte.
+
+Tus datos quedan solo en el teléfono. Usa Progreso > "Descargar respaldo" de vez en cuando.
+En esta versión Ana da consejos con tus datos, pero el chat y "Estimar con Ana" solo funcionan en la versión dentro de Claude.
