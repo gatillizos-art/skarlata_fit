@@ -1,4 +1,4 @@
-RH Calisthenics - app instalable
+SkarlataFit - app instalable
 
 1) Sube TODO el contenido de esta carpeta a un repositorio de GitHub (index.html, sw.js, manifest.webmanifest y la carpeta icons), manteniendo la misma estructura.
 2) En el repositorio: Settings > Pages > Deploy from a branch > main > / (root) > Save.
