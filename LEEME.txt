@@ -9,3 +9,8 @@ SkarlataFit - app instalable
 
 Tus datos quedan solo en el teléfono. Usa Progreso > "Descargar respaldo" de vez en cuando.
 En esta versión Ana da consejos con tus datos, pero el chat y "Estimar con Ana" solo funcionan en la versión dentro de Claude.
+
+PARA HACER UN APK (opcional)
+1. Publica esta carpeta en GitHub Pages (o cualquier sitio con https).
+2. Entra a pwabuilder.com, pega la direccion de tu app y elige Android.
+3. Descarga el APK, permite "instalar apps de fuentes desconocidas" en tu celular e instalalo.
