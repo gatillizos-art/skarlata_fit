@@ -1,5 +1,5 @@
 // Service worker de RH Calisthenics: guarda la app en el teléfono para abrirla sin conexión.
-const VERSION = "rh-calisthenics-v1";
+const VERSION = "rh-calisthenics-v4";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {
