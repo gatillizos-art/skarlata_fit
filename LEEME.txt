@@ -19,3 +19,4 @@ NOVEDADES: ícono nuevo, botón «Instalar app», reconexión automática del pu
 Sube TODOS los archivos (incluida la carpeta icons y sw.js) y abre la app dos veces para que se actualice el caché.
 Secciones plegables: toca el título de cada tarjeta para abrir o cerrar.
 NOVEDADES v11: ejercicios guiados (pasos, errores, ritmo, voz), semana de inicio, hábitos, lecciones, cuestionario, revisión semanal, mate y más líquidos, pantalla de Permisos.
+v12: cronómetro, temporizador, intervalos y Mis rutinas (crear, editar, copiar, ejercicios propios).
