@@ -13,8 +13,8 @@
     "minimal-ui"
   ],
   "orientation": "portrait",
-  "background_color": "#EBEFF3",
-  "theme_color": "#12202D",
+  "background_color": "#14263A",
+  "theme_color": "#14263A",
   "categories": [
     "health",
     "fitness",
@@ -34,7 +34,7 @@
       "purpose": "any"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
