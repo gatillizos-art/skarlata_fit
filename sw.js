@@ -1,5 +1,5 @@
 // Service worker de SkarlataFit: guarda la app en el teléfono para abrirla sin conexión.
-const VERSION = "rh-calisthenics-v6";
+const VERSION = "rh-calisthenics-v7";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {

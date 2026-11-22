@@ -1277,7 +1277,7 @@ ACT.calday = b => {
   openSheet('<div class="stack"><div class="row between"><h2>' + esc(longDate(k)) + '</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
     '<div class="card"><h3>Planificado</h3><h4 style="margin-top:4px">' + (r ? esc(r.name) : "Descanso") + "</h4>" +
     (r ? '<p class="small muted">' + r.min + " min · " + esc(r.desc) + "</p>" : "") + (custom ? '<p class="small muted">Lo cambiaste tú.</p>' : "") + "</div>" +
-    (works.length ? '<div class="card"><h3>Hecho</h3>' + works.map(w => '<div class="item"><span>' + esc(w.name) + '</span><span class="muted">' + w.min + " min · ~" + w.kcal + " kcal</span></div>").join("") + "</div>" : "") +
+    (works.length ? '<div class="card"><h3>Hecho</h3>' + works.map(w => '<div class="item"><span>' + esc(w.name) + '</span><span class="muted">' + w.min + " min · ~" + w.kcal + " kcal" + (w.hr ? " · ♥ " + w.hr.avg + " (máx " + w.hr.max + ")" : "") + "</span></div>").join("") + "</div>" : "") +
     (r ? '<button class="btn block" data-act="verrutina" data-id="' + r.id + '">Ver ejercicios</button>' : "") +
     (r && k === todayKey() ? '<button class="btn primary block" data-act="start" data-id="' + r.id + '">Empezar ahora</button>' : "") +
     '<button class="btn block" data-act="calpick" data-k="' + k + '">Cambiar la rutina de este día</button></div>');
@@ -2126,6 +2126,172 @@ RENDER.entrenar = () => {
 };
 const progresoBase2 = RENDER.progreso;
 RENDER.progreso = () => progresoBase2().replace(/<\/div>$/, fuerzaHTML() + logrosHTML() + "</div>");
+// ---------- Reloj y pulsómetro (Bluetooth del pulso + importar entrenos TCX/GPX) ----------
+const HR = {dev: null, ch: null, bpm: 0, samples: [], on: false, err: ""};
+const hrSupported = () => typeof navigator !== "undefined" && !!navigator.bluetooth && window.isSecureContext !== false;
+const hrMax = () => Math.max(120, 220 - (Number(S.profile && S.profile.edad) || 30));
+function hrZone(b) {
+  const r = b / hrMax();
+  return r < 0.6 ? ["Suave", "var(--water)"] : r < 0.7 ? ["Ligera", "var(--good)"] : r < 0.8 ? ["Moderada", "var(--accent)"] : r < 0.9 ? ["Fuerte", "var(--warn)"] : ["Máxima", "var(--bad)"];
+}
+function hrParse(dv) {
+  const f = dv.getUint8(0);
+  return (f & 1) ? dv.getUint16(1, true) : dv.getUint8(1);
+}
+function hrOnValue(ev) {
+  const b = hrParse(ev.target.value);
+  if (!b || b < 30 || b > 230) return;
+  HR.bpm = b; HR.samples.push({t: Date.now(), b});
+  if (HR.samples.length > 20000) HR.samples.splice(0, 5000);
+  hrPaint();
+}
+function hrPaint() {
+  const z = hrZone(HR.bpm);
+  document.querySelectorAll("[data-hrlive]").forEach(el => {
+    el.innerHTML = '<b class="num" style="font-size:22px">♥ ' + HR.bpm + '</b> <span class="small" style="color:' + z[1] + '">' + z[0] + "</span>";
+  });
+}
+function hrStatus() { document.querySelectorAll("[data-hrstat]").forEach(el => { el.textContent = HR.on ? "Conectado a " + ((HR.dev && HR.dev.name) || "tu reloj") + (HR.bpm ? " · " + HR.bpm + " lpm" : " · esperando pulso…") : (HR.err || "Sin conectar"); }); }
+async function hrConnect() {
+  HR.err = "";
+  if (!hrSupported()) { HR.err = "Este navegador no permite Bluetooth. Usa Chrome en Android con la app instalada."; return hrStatus(); }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({filters: [{services: ["heart_rate"]}], optionalServices: ["battery_service"]});
+    HR.dev = dev;
+    dev.addEventListener("gattserverdisconnected", () => { HR.on = false; HR.bpm = 0; HR.err = "Se desconectó. Vuelve a conectar si quieres seguir midiendo."; hrStatus(); hrRefreshPlayer(); });
+    const srv = await dev.gatt.connect(), svc = await srv.getPrimaryService("heart_rate"), ch = await svc.getCharacteristic("heart_rate_measurement");
+    await ch.startNotifications();
+    ch.addEventListener("characteristicvaluechanged", hrOnValue);
+    HR.ch = ch; HR.on = true; HR.samples = [];
+    toast("Reloj conectado");
+  } catch (e) {
+    HR.on = false;
+    HR.err = e && e.name === "NotFoundError" ? "No elegiste ningún dispositivo, o tu reloj no está emitiendo el pulso. Mira la ayuda de abajo." : "No pude conectar. Activa el pulso en tu reloj y vuelve a intentar.";
+  }
+  hrStatus(); hrRefreshPlayer();
+}
+function hrDisconnect() {
+  try { if (HR.ch) HR.ch.removeEventListener("characteristicvaluechanged", hrOnValue); if (HR.dev && HR.dev.gatt.connected) HR.dev.gatt.disconnect(); } catch (e) {}
+  HR.on = false; HR.bpm = 0; HR.err = ""; hrStatus(); hrRefreshPlayer();
+}
+function hrStats(from) {
+  const a = HR.samples.filter(x => x.t >= from).map(x => x.b);
+  if (a.length < 3) return null;
+  return {avg: Math.round(a.reduce((s, x) => s + x, 0) / a.length), max: Math.max.apply(null, a)};
+}
+function hrChip() {
+  return '<div class="card row between" style="padding:8px 14px"><span data-hrlive></span><span class="small muted">de ' + hrMax() + " máx. estimado</span></div>";
+}
+function hrRefreshPlayer() { if (typeof PL !== "undefined" && PL && $("#layer .player")) drawPlayer(); }
+// Reproductor: pulso en vivo y promedio al terminar
+const _drawPlayerBase = drawPlayer;
+drawPlayer = function () {
+  _drawPlayerBase();
+  const inner = document.querySelector("#layer .player .inner");
+  if (!inner) return;
+  if (PL.phase === "done") {
+    const st = PL.hr;
+    if (st) { const p = document.createElement("p"); p.className = "muted"; p.textContent = "Pulso: promedio " + st.avg + " lpm, máximo " + st.max + " lpm."; const btn = inner.querySelector('[data-act="plclose"]'); if (btn) inner.insertBefore(p, btn); }
+    return;
+  }
+  if (HR.on) { const d = document.createElement("div"); d.innerHTML = hrChip(); inner.insertBefore(d.firstChild, inner.children[2] || null); hrPaint(); }
+};
+const _finishRoutineBase = finishRoutine;
+finishRoutine = function () {
+  const st = HR.on || HR.samples.length ? hrStats(PL.t0) : null;
+  PL.hr = st;
+  _finishRoutineBase();
+  if (st) { const d = getDay(todayKey()), w = d.work[d.work.length - 1]; if (w) { w.hr = st; saveDay(todayKey()); } }
+  drawPlayer();
+};
+
+// Importar entrenos de un reloj (TCX / GPX)
+function parseActivity(txt) {
+  const doc = new DOMParser().parseFromString(txt, "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("xml");
+  const all = (n, tag) => Array.from(n.getElementsByTagName("*")).filter(e => e.localName === tag);
+  const out = [];
+  const tcx = all(doc, "Activity");
+  tcx.forEach(a => {
+    const id = all(a, "Id")[0], laps = all(a, "Lap");
+    let sec = 0, kcal = 0, mx = 0, ws = 0, wn = 0;
+    laps.forEach(l => {
+      const t = Number((all(l, "TotalTimeSeconds")[0] || {}).textContent) || 0; sec += t;
+      kcal += Number((all(l, "Calories")[0] || {}).textContent) || 0;
+      const av = all(l, "AverageHeartRateBpm")[0], m = all(l, "MaximumHeartRateBpm")[0];
+      const avv = av && Number((all(av, "Value")[0] || {}).textContent), mxv = m && Number((all(m, "Value")[0] || {}).textContent);
+      if (avv) { ws += avv * t; wn += t; } if (mxv) mx = Math.max(mx, mxv);
+    });
+    const start = id ? new Date(id.textContent.trim()) : (laps[0] && new Date(laps[0].getAttribute("StartTime")));
+    if (!start || isNaN(start) || !sec) return;
+    out.push({start, sec, kcal, avg: wn ? Math.round(ws / wn) : 0, max: mx, sport: a.getAttribute("Sport") || "Entreno"});
+  });
+  if (out.length) return out;
+  all(doc, "trk").forEach(t => {
+    const pts = all(t, "trkpt"), times = pts.map(p => all(p, "time")[0]).filter(Boolean).map(e => new Date(e.textContent.trim())).filter(d => !isNaN(d));
+    const hrs = all(t, "hr").map(e => Number(e.textContent)).filter(x => x > 30 && x < 230);
+    if (times.length < 2) return;
+    const sec = (times[times.length - 1] - times[0]) / 1000;
+    out.push({start: times[0], sec, kcal: 0, avg: hrs.length ? Math.round(hrs.reduce((s, x) => s + x, 0) / hrs.length) : 0, max: hrs.length ? Math.max.apply(null, hrs) : 0, sport: (all(t, "type")[0] || {}).textContent || "Entreno"});
+  });
+  return out;
+}
+INP.relojfile = t => {
+  const f = t.files && t.files[0], msg = x => { const m = $("#rel-msg"); if (m) m.textContent = x; };
+  if (!f) return;
+  if (f.size > 8e6) { t.value = ""; return msg("El archivo es demasiado grande."); }
+  if (/\.fit$/i.test(f.name)) { t.value = ""; return msg("Los archivos .fit no se pueden leer aquí. Desde la app de tu reloj exporta el entreno como TCX o GPX."); }
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const acts = parseActivity(rd.result);
+      if (!acts.length) throw new Error("vacío");
+      let n = 0;
+      acts.forEach(a => {
+        const k = keyOf(a.start), d = getDay(k), src = a.start.toISOString();
+        if (d.work.some(w => w.src === src)) return;
+        const min = Math.max(1, Math.round(a.sec / 60));
+        const kcal = a.kcal || Math.round(5 * lastWeight(S.profile) * min / 60);
+        d.work.push({id: "imp", name: "Importado: " + a.sport, min, kcal, sets: [], src, hr: a.avg ? {avg: a.avg, max: a.max || a.avg} : undefined});
+        if (!d.work[d.work.length - 1].hr) delete d.work[d.work.length - 1].hr;
+        saveDay(k); n++;
+      });
+      render(); toast(n ? n + " entreno(s) importado(s)" : "Ya estaban importados");
+    } catch (e) { msg("No pude leer ese archivo. Usa un TCX o GPX exportado desde tu reloj."); }
+    t.value = "";
+  };
+  rd.onerror = () => { msg("No pude abrir el archivo."); t.value = ""; };
+  rd.readAsText(f);
+};
+ACT.hrconnect = () => { hrConnect(); };
+ACT.hrdisc = () => { hrDisconnect(); };
+ACT.pickreloj = () => { const i = $("#relojfile"); if (i) i.click(); };
+
+const _progresoReloj = RENDER.progreso;
+RENDER.progreso = () => {
+  const ok = hrSupported();
+  const ayuda = '<details><summary class="small" style="cursor:pointer;min-height:36px">Cómo activar el pulso en mi reloj</summary><div class="stack s8 small muted" style="margin-top:6px">' +
+    "<p><b>Garmin:</b> Ajustes → Sensores y accesorios → Frecuencia cardíaca → Emitir frecuencia cardíaca.</p>" +
+    "<p><b>Polar y bandas de pecho (Polar H10, Wahoo, Coospo):</b> se conectan directo; solo sácalas del modo de otra app.</p>" +
+    "<p><b>Amazfit / Xiaomi:</b> en algunos modelos existe la opción de compartir el pulso (Zepp o Mi Fitness → tu dispositivo → Compartir frecuencia cardíaca). Depende del modelo.</p>" +
+    "<p><b>Huawei:</b> en algunos modelos, Ajustes → Compartir frecuencia cardíaca.</p>" +
+    "<p><b>Samsung Galaxy Watch, Fitbit y Apple Watch:</b> no emiten el pulso por Bluetooth estándar, así que no se pueden conectar en vivo. Usa «Importar entreno» con un archivo TCX o GPX, o una banda de pecho.</p>" +
+    "<p>No tengo cómo probar cada modelo: si el tuyo no aparece, es porque no emite el pulso.</p></div></details>";
+  const ult = [];
+  Object.keys(S.days).sort().reverse().forEach(k => (S.days[k].work || []).forEach(w => { if (w.hr && ult.length < 5) ult.push([k, w]); }));
+  const card = '<div class="card stack s8"><h3>Reloj y pulso</h3>' +
+    (ok ? '<p class="small muted">Mide tu pulso en vivo durante la rutina con un reloj o banda que emita frecuencia cardíaca por Bluetooth.</p>' +
+      '<p class="small" data-hrstat role="status">' + (HR.on ? "Conectado" : "Sin conectar") + "</p>" +
+      '<div class="row wrap"><button class="btn sm primary" data-act="hrconnect">' + (HR.on ? "Cambiar dispositivo" : "Conectar reloj o banda") + "</button>" + (HR.on ? '<button class="btn sm" data-act="hrdisc">Desconectar</button>' : "") + "</div>"
+      : '<p class="small muted">El pulso en vivo funciona solo en Chrome para Android con la app instalada desde https. En este dispositivo no está disponible.</p>') +
+    ayuda +
+    '<div><h4>Importar entreno</h4><p class="small muted">Sube un archivo TCX o GPX exportado desde la app de tu reloj (Garmin Connect, Strava, Zepp, Polar Flow, Samsung Health, etc.). Se suma a tu calendario con duración, calorías y pulso.</p>' +
+    '<button class="btn sm" data-act="pickreloj" style="margin-top:8px">Elegir archivo</button>' +
+    '<input id="relojfile" data-in="relojfile" type="file" accept=".tcx,.gpx,.xml,application/xml,text/xml,application/gpx+xml" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"><p id="rel-msg" class="small" role="status"></p></div>' +
+    (ult.length ? "<div><h4>Últimos entrenos con pulso</h4>" + ult.map(([k, w]) => '<div class="item"><span>' + esc(shortDate ? shortDate(k) : k) + " · " + esc(w.name) + '</span><span class="muted">♥ ' + w.hr.avg + " (máx " + w.hr.max + ")</span></div>").join("") + "</div>" : "") +
+    '<p class="note">Pasos, sueño y datos de Google Fit, Health Connect o Apple Salud no se pueden leer desde una app web.</p></div>';
+  return _progresoReloj().replace(/<\/div>$/, card + "</div>");
+};
 // ---------- Ana: consejos con tus datos y chat ----------
 function anaTips() {
   if (esMenor(S.profile)) return anaTipsJ();
