@@ -154,6 +154,26 @@ textarea{resize:vertical;min-height:72px}
 <div id="layer"></div>
 <div id="toastHost" aria-live="polite"></div>
 <script>
+// Líquidos e infusiones (por 100 ml, porciones típicas). Valores aproximados.
+const FOODS_BEB = [
+["Mate cebado sin azúcar",1,0,0.2,0,"1 mate",250],["Mate cebado con 1 cucharadita de azúcar",8,0,2,0,"1 mate",250],["Mate cebado con 2 cucharaditas de azúcar",16,0,4,0,"1 mate",250],
+["Mate cebado con edulcorante",1,0,0.2,0,"1 mate",250],["Mate en termo (1 litro) sin azúcar",1,0,0.2,0,"1 termo",1000],["Mate en termo (1 litro) con azúcar",8,0,2,0,"1 termo",1000],
+["Mate latte (yerba con leche)",35,1.7,3.5,1.5,"1 taza",250],["Té negro con 1 cucharadita de azúcar",8,0,2,0,"1 taza",200],["Té negro con 2 cucharaditas de azúcar",16,0,4,0,"1 taza",200],
+["Té con limón y miel",20,0,5,0,"1 taza",200],["Té verde sin azúcar",1,0,0.2,0,"1 taza",200],["Té helado casero con limón",15,0,3.8,0,"1 vaso",300],
+["Café negro con 1 cucharadita de azúcar",8,0.1,2,0,"1 taza",200],["Café con leche con 1 cucharadita de azúcar",38,1.7,4.5,1.2,"1 taza",250],["Café cortado",30,1.5,2,1.5,"1 taza chica",120],
+["Capuchino",40,2,4,1.8,"1 taza",250],["Café helado con leche",45,1.6,6,1.6,"1 vaso",300],["Moka o café con chocolate",75,2.5,10,3,"1 taza",250],
+["Nescafé con leche entera",35,1.8,3.2,1.6,"1 taza",250],["Manzanilla",1,0,0.2,0,"1 taza",200],["Boldo",1,0,0.2,0,"1 taza",200],["Menta o poleo",1,0,0.2,0,"1 taza",200],
+["Té de jengibre y limón",3,0,0.7,0,"1 taza",200],["Rooibos",1,0,0.2,0,"1 taza",200],["Infusión de frutas sin azúcar",2,0,0.5,0,"1 taza",200],["Agua con limón",2,0,0.6,0,"1 vaso",250],
+["Agua con gas",0,0,0,0,"1 vaso",250],["Agua mineral",0,0,0,0,"1 vaso",250],["Agua saborizada sin azúcar",2,0,0.3,0,"1 botella",500],
+["Leche con chocolate",75,3.2,10.5,2.5,"1 vaso",250],["Leche con plátano (batido)",70,3,11,2,"1 vaso",300],["Leche con Milo o cacao",78,3.2,11,2.6,"1 taza",250],
+["Leche con café y azúcar (cafecito)",45,2,6,1.5,"1 taza",200],["Batido de proteína con agua",45,8,2,0.8,"1 vaso",300],["Batido de proteína con leche",85,10,6,2.2,"1 vaso",300],
+["Smoothie de frutas con yogur",65,2,12,1,"1 vaso",300],["Jugo de piña natural",50,0.4,12,0.1,"1 vaso",250],["Jugo de frutilla natural",35,0.6,8,0.2,"1 vaso",250],
+["Jugo de limón con azúcar (limonada)",35,0.1,9,0,"1 vaso",300],["Limonada sin azúcar",5,0,1.3,0,"1 vaso",300],["Jugo de durazno en caja",45,0.3,11,0,"1 vaso",250],
+["Bebida energética",45,0,11,0,"1 lata",250],["Bebida energética sin azúcar",3,0,0.2,0,"1 lata",250],["Coca-Cola o similar",42,0,10.6,0,"1 vaso",250],["Coca-Cola o similar cero",0.5,0,0,0,"1 vaso",250],
+["Ginger ale",35,0,9,0,"1 vaso",250],["Chicha de manzana",55,0,10,0,"1 vaso",200],["Chicha en cacho",60,0,12,0,"1 vaso",200],["Terremoto",90,0,12,0,"1 vaso",300],
+["Piscola",75,0,8,0,"1 vaso",300],["Cerveza sin alcohol",20,0.3,4.5,0,"1 lata",350],["Vino blanco",82,0.1,2.6,0,"1 copa",150],["Ron con cola",70,0,8,0,"1 vaso",300],
+["Caldo de pollo",12,1.2,0.8,0.4,"1 taza",250],["Caldo de verduras",6,0.3,1,0.1,"1 taza",250],["Sopa de verduras (líquida)",25,1,4.5,0.5,"1 plato",300],["Agua de arroz",30,0.5,6.5,0.1,"1 vaso",200]
+];
 // Comidas caseras y ensaladas (valores aproximados por 100 g, porciones típicas).
 const FOODS_CASA = [
 ["Ensalada de lechuga y tomate",25,1,4,0.5,"1 plato",150],["Ensalada de lechuga y tomate con aceite y limón",55,1,4,4,"1 plato",160],["Ensalada de palta y tomate",95,1.2,5,8,"1 plato",160],
@@ -297,7 +317,7 @@ const FOODS_RAW = [
 ["Cerveza",43,0.5,3.6,0,"1 lata",350],["Vino tinto",85,0.1,2.6,0,"1 copa",150],
 ["Café sin azúcar",1,0.1,0,0,"1 taza",200],["Té sin azúcar",1,0,0.3,0,"1 taza",200]
 ];
-const FOODS = FOODS_RAW.concat(typeof FOODS_MORE !== "undefined" ? FOODS_MORE : [], typeof FOODS_CL !== "undefined" ? FOODS_CL : [], typeof FOODS_CASA !== "undefined" ? FOODS_CASA : []).filter((a, i, arr) => arr.findIndex(b => b[0].toLowerCase() === a[0].toLowerCase()) === i).map(a => ({n:a[0],k:a[1],p:a[2],c:a[3],f:a[4],u:a[5],g:a[6]}));
+const FOODS = FOODS_RAW.concat(typeof FOODS_MORE !== "undefined" ? FOODS_MORE : [], typeof FOODS_CL !== "undefined" ? FOODS_CL : [], typeof FOODS_CASA !== "undefined" ? FOODS_CASA : [], typeof FOODS_BEB !== "undefined" ? FOODS_BEB : []).filter((a, i, arr) => arr.findIndex(b => b[0].toLowerCase() === a[0].toLowerCase()) === i).map(a => ({n:a[0],k:a[1],p:a[2],c:a[3],f:a[4],u:a[5],g:a[6]}));
 // Ejercicios: t = 'r' (repeticiones, tú marcas "Listo") o 't' (tiempo, corre el reloj).
 const EX = {
   wrist:{n:"Círculos de muñeca",t:"t",cue:"Gira lento en ambos sentidos. Apoya las palmas en el suelo si te acomoda."},
@@ -1691,7 +1711,7 @@ function remStart() { if (!remTimer) remTimer = setInterval(remTick, 30000); }
 ACT.remtog = b => {
   const r = remGet(), k = b.dataset.k;
   if (!r[k] && Notification.permission !== "granted") {
-    Notification.requestPermission().then(p => { if (p === "granted") { r[k] = true; remSet(r); } else toast("Sin permiso de avisos en este teléfono"); showAjustes(); });
+    Notification.requestPermission().then(p => { if (p === "granted") { r[k] = true; remSet(r); } else toast("Sin permiso de avisos. Actívalo en Ajustes del teléfono → Apps → Chrome → Notificaciones"); showAjustes(); });
     return;
   }
   r[k] = !r[k]; remSet(r); showAjustes();
@@ -1805,7 +1825,7 @@ ACT.scan = async () => {
       try { const r = await det.detect(v); if (r.length && SCAN === me) { const c = r[0].rawValue; stopScan(); lookupCode(c); } } catch (e) {}
       me.busy = false;
     }, 400);
-  } catch (e) { msg("No pude abrir la cámara. Revisa el permiso o escribe el código."); }
+  } catch (e) { msg("No pude abrir la cámara. Revisa el permiso en Ajustes → Permisos de la app, o escribe el código."); }
 };
 ACT.scango = () => { const i = $("#sc-c"); if (i) { const c = i.value.replace(/\D/g, ""); stopScan(); lookupCode(c, true); } };
 async function lookupCode(code, manual) {
@@ -2478,6 +2498,426 @@ RENDER.progreso = () => {
     '<p class="note">Pasos, sueño y datos de Google Fit, Health Connect o Apple Salud no se pueden leer desde una app web.</p></div>';
   return _progresoReloj().replace(/<\/div>$/, card + "</div>");
 };
+// ---------- Técnica guiada: pasos, errores comunes, ritmo y voz ----------
+// id | pasos (separados por ;) | errores comunes | ritmo y respiración
+const TECH_RAW = `wrist|Pon los brazos estirados al frente o los dedos apoyados en el suelo;Gira la muñeca despacio en círculos amplios;Cambia de sentido a la mitad del tiempo|Ir muy rápido o forzar si duele|Lento y suave. Respira normal.
+shoulder|Párate con los brazos a los lados;Sube los hombros hacia las orejas y llévalos hacia atrás y abajo en círculo;Cambia de sentido a la mitad|Encoger el cuello o hacer círculos chicos|Círculos grandes y lentos. Respira normal.
+catcow|Apóyate en manos y rodillas, manos bajo los hombros;Inhala: baja el ombligo y mira al frente (vaca);Exhala: redondea la espalda y baja la cabeza (gato)|Mover solo el cuello, sin mover la columna|Una respiración por movimiento.
+scap|Cuélgate de la barra con los brazos estirados;Sin doblar los codos, baja los hombros alejándolos de las orejas;Suelta y vuelve a subirlos despacio|Doblar los codos o balancearte|Sube y baja en 2 segundos. Exhala al bajar los hombros.
+deepsq|Pies un poco más anchos que los hombros, puntas algo hacia afuera;Baja lo más que puedas con la espalda recta y los talones apoyados;Mantén abajo empujando las rodillas hacia afuera|Despegar los talones o juntar las rodillas|Respira lento y profundo en la posición.
+plank|Apoya antebrazos y puntas de pie, codos bajo los hombros;Aprieta abdomen y glúteos para formar una línea recta de cabeza a talones;Mira al suelo y mantén el cuello largo|Hundir la cintura o subir la cola|Respira sin aguantar el aire. Si tiembla mucho, apoya las rodillas.
+pushinc|Manos en una superficie firme (mesa o banco) un poco más anchas que los hombros;Cuerpo recto como una tabla; baja el pecho hacia el borde;Empuja hasta estirar los brazos|Dejar caer la cintura o abrir mucho los codos|Baja en 2 s, sube en 1 s. Inhala al bajar, exhala al subir.
+benchdip|Manos en el borde de un banco firme, piernas dobladas al frente;Baja doblando los codos hacia atrás hasta unos 90 grados;Empuja con los brazos para subir|Dejar los hombros caer hacia adelante o separarte del banco|Baja en 2 s, sube en 1 s. Exhala al subir.
+kneeraise|Tumbado boca arriba, espalda pegada al suelo;Sube las rodillas hacia el pecho sin despegar la zona lumbar;Baja las piernas controlado sin tocar el suelo|Arquear la espalda al bajar|Sube exhalando, baja inhalando. Sin balanceo.
+superman|Boca abajo con brazos estirados al frente;Levanta a la vez brazos, pecho y piernas unos centímetros;Mantén 1 segundo arriba y baja|Mirar hacia arriba forzando el cuello|Sube exhalando. Movimiento corto y controlado.
+invrow|Acuéstate bajo una barra o mesa firme y agárrala;Cuerpo recto, talones en el suelo; tira del pecho hacia la barra;Baja controlado hasta estirar los brazos|Mover la cadera hacia abajo o encoger los hombros|Sube en 1 s, baja en 2 s. Exhala al subir.
+hang|Agarra la barra con las palmas al frente y los brazos estirados;Mantén los pies sin tocar el suelo y el cuerpo quieto;Aprieta el agarre y respira|Encoger los hombros hasta las orejas|Respira lento. Para cuando se resbale el agarre.
+squat|Pies al ancho de hombros, puntas algo hacia afuera;Lleva la cadera atrás y abajo como sentándote, pecho arriba;Empuja el suelo con todo el pie para subir|Rodillas hacia adentro o talones despegados|Baja en 2 s, sube en 1 s. Inhala al bajar.
+lunge|Párate con un paso largo al frente;Baja la rodilla de atrás hacia el suelo sin tocarlo, tronco recto;Empuja con la pierna de adelante para volver|Rodilla de adelante pasando mucho la punta del pie|Baja en 2 s, sube en 1 s. Alterna las piernas.
+glute|Tumbado, rodillas dobladas, pies cerca de la cola;Empuja con los talones y sube la cadera hasta línea recta rodillas-hombros;Aprieta glúteos arriba y baja despacio|Arquear la espalda baja en lugar de usar los glúteos|Sube exhalando, pausa 1 s, baja en 2 s.
+hollowk|Tumbado boca arriba, rodillas dobladas sobre la cadera;Pega la zona lumbar al suelo y levanta hombros y brazos;Mantén sin que se despegue la espalda baja|Arquear la espalda baja o tirar del cuello|Respira corto sin soltar la tensión del abdomen.
+pushup|Manos bajo los hombros, cuerpo recto de cabeza a talones;Baja el pecho con los codos a unos 45 grados del cuerpo;Empuja hasta estirar los brazos sin hundir la cintura|Cintura caída o codos muy abiertos|Baja en 2 s, sube en 1 s. Inhala al bajar. Si no puedes, usa rodillas o una superficie alta.
+dip|Sube a las paralelas con brazos estirados, hombros hacia abajo;Baja doblando los codos hasta unos 90 grados con el pecho algo inclinado;Empuja hasta estirar sin encoger los hombros|Bajar demasiado profundo o hundir los hombros|Baja en 2 s, sube en 1 s.
+diamond|Manos juntas bajo el pecho formando un rombo con pulgares e índices;Cuerpo recto; baja el pecho hacia las manos con codos cerca del cuerpo;Empuja para subir|Cintura caída o codos muy abiertos|Baja en 2 s, sube en 1 s.
+pike|Posición de V invertida: caderas altas, brazos y piernas casi estirados;Dobla los codos llevando la cabeza hacia el suelo entre las manos;Empuja para volver a la V|Convertirlo en una flexión normal sin caderas altas|Baja en 2 s, sube en 1 s. Mantén las caderas arriba.
+pullup|Agarra la barra un poco más ancha que los hombros, hombros hacia abajo;Tira los codos hacia las costillas hasta pasar la barbilla;Baja controlado hasta estirar los brazos|Balancearte o no bajar completo|Sube en 1 s, baja en 3 s. Exhala al subir.
+invrowfeet|Bajo una barra firme, con los pies elevados sobre una silla o banco;Cuerpo recto; tira del pecho hacia la barra;Baja controlado hasta estirar los brazos|Hundir la cadera o encoger los hombros|Sube en 1 s, baja en 2 s.
+legraise|Cuélgate de la barra con los brazos estirados y hombros hacia abajo;Sube las piernas juntas, rectas o dobladas, hasta la cadera;Baja lento sin balancearte|Usar el impulso y balancear el cuerpo|Sube exhalando, baja en 3 s.
+hollow|Tumbado boca arriba, lumbar pegada al suelo;Levanta hombros y piernas rectas unos centímetros, brazos junto a las orejas;Mantén el cuerpo en forma de banana|Despegar la zona lumbar del suelo|Respira corto. Si no puedes, dobla las rodillas.
+bulg|Apoya el empeine de una pierna atrás en un banco;Baja con la pierna de adelante, tronco recto;Empuja con el talón de adelante para subir|Pie delantero muy cerca del banco o rodilla hacia adentro|Baja en 2 s, sube en 1 s. Haz todas las repeticiones y cambia de pierna.
+jumpsq|Baja a una sentadilla con la espalda recta;Salta explosivo estirando todo el cuerpo;Aterriza suave, rodillas dobladas y baja de nuevo|Aterrizar con piernas rígidas|Salta exhalando. Aterriza suave, como sin ruido.
+walklunge|Da un paso largo y baja la rodilla de atrás cerca del suelo;Empuja con la pierna de adelante y da el siguiente paso;Mantén el tronco recto y avanza alternando|Pasos muy cortos o inclinarte adelante|Baja en 2 s, sube en 1 s.
+pistolas|Párate frente a un apoyo estable (pared, marco o barra);Baja en una pierna agarrado del apoyo con la otra estirada al frente;Sube ayudándote lo justo con las manos|Dejarte caer sin control|Baja en 3 s, sube en 1 s. Menos ayuda cada semana.
+bridge1|Tumbado con un pie apoyado, la otra pierna estirada hacia arriba;Empuja el talón y sube la cadera hasta línea recta;Baja despacio sin tocar el suelo|Inclinar la cadera hacia un lado|Sube exhalando, baja en 2 s. Cambia de pierna.
+lsit|Apoya las manos en paralelas, banco o suelo y estira los brazos empujando hacia abajo;Sube las piernas estiradas al frente, juntas;Hombros hacia abajo y mantén|Encoger los hombros o doblar las piernas|Respira corto. Si no puedes, deja las rodillas dobladas.
+explpull|Agarre un poco más ancho que los hombros, hombros hacia abajo;Tira con fuerza y rapidez llevando el pecho hacia la barra;Baja controlado y reinicia sin balanceo|Balancear el cuerpo o bajar de golpe|Sube explosivo, baja en 2 s. Descansa bien entre series.
+deepdip|Sube a las paralelas con brazos estirados;Baja lento hasta que los hombros queden a la altura de los codos, sin dolor;Empuja con fuerza para subir|Bajar más de lo que tus hombros aceptan|Baja en 3 s, sube en 1 s. Para si sientes molestia en el hombro.
+hspu|Apoya las manos a un palmo de la pared y sube las piernas hasta apoyar los pies;Cuerpo recto, brazos estirados, hombros empujando hacia arriba;Mantén mirando entre las manos|Arquear la espalda o encoger los hombros|Respira lento. Baja si te cansas o marea.
+pistol|De pie en una pierna con la otra estirada al frente;Baja lento con el tronco recto y el talón apoyado;Empuja para subir sin impulso|Perder el equilibrio por talón levantado|Baja en 3 s, sube en 1 s. Usa apoyo si lo necesitas.
+frontl|Cuélgate de la barra, sube las rodillas dobladas al pecho;Inclina el torso hasta dejar la espalda paralela al suelo;Mantén brazos estirados y hombros hacia abajo|Doblar los brazos o arquear la espalda|Mantén 3 a 5 s. Respira corto.
+dragon|Acuéstate en un banco o suelo y agarra algo firme sobre tu cabeza;Sube el cuerpo recto apoyado en los hombros;Baja controlado manteniendo el cuerpo recto|Doblar la cadera o bajar de golpe|Baja en 4 s. Exhala al subir. Avanza solo si no duele la espalda.
+archerpush|Manos bien anchas, cuerpo recto;Baja hacia un lado doblando ese brazo y estirando el otro;Empuja para volver y cambia de lado|Torcer la cadera|Baja en 2 s, sube en 1 s.
+pseudo|Manos junto a la cintura con los dedos hacia atrás o afuera, hombros adelante de las manos;Baja el pecho con el cuerpo recto;Empuja hasta estirar|Bajar la cadera o doler en las muñecas|Baja en 2 s, sube en 1 s. Calienta muñecas antes.
+hspuneg|Entra al handstand contra la pared con el pecho hacia la pared;Baja lento doblando los codos hasta que la cabeza toque una colchoneta;Sal y reinicia|Caer de golpe sobre la cabeza|Baja en 4 s. Usa colchoneta y espacio libre.
+hspu2|En handstand contra la pared, baja la cabeza hacia una colchoneta;Empuja hasta estirar los brazos;Mantén el cuerpo recto sin balanceo|Arquear mucho la espalda|Baja en 2 s, sube en 1 s. Descansa entre series.
+archerpull|Agarra la barra bien ancho;Tira hacia un lado llevando el pecho a esa mano mientras el otro brazo se estira;Baja controlado y alterna|Girar el cuerpo|Sube en 1 s, baja en 3 s.
+lsitpull|Cuélgate con las piernas estiradas al frente en L;Tira de la barra hasta pasar la barbilla manteniendo las piernas arriba;Baja controlado sin soltar la L|Soltar las piernas|Sube en 1 s, baja en 3 s.
+flrow|Cuélgate en front lever tuck con la espalda paralela al suelo;Sube y baja el cuerpo doblando los codos;Mantén la espalda recta|Perder la posición del tuck|Sube en 1 s, baja en 3 s. Haz pocas repeticiones.
+shrimp|De pie en una pierna con la otra doblada hacia atrás, sujeta con la mano;Baja despacio hasta tocar la rodilla trasera cerca del suelo;Empuja con la pierna de apoyo para subir|Perder el equilibrio|Baja en 3 s. Apóyate en una pared si lo necesitas.
+jlunge|Da un paso largo y baja a una zancada;Salta explosivo cambiando de pierna en el aire;Aterriza suave con la rodilla alineada|Aterrizar con la rodilla rígida|Salta exhalando. Control al aterrizar.
+nordic|Arrodíllate con los pies bien sujetos y el cuerpo recto de rodillas a cabeza;Inclina el cuerpo hacia adelante lo más lento posible;Atrapa con las manos en el suelo y vuelve|Doblar la cadera|Baja en 5 s. Para si sientes un tirón fuerte.
+muscleup|Agarre falso o normal; tira fuerte de la barra hasta el pecho;Pasa los codos sobre la barra rápido;Estira los brazos arriba|Tirar con los brazos sin impulso de cadera|Hazlo solo con mucha fuerza previa y descanso largo.
+weightedpull|Pon el peso extra de forma segura en el cinturón o mochila;Haz una dominada controlada pasando la barbilla;Baja completo y sin balanceo|Sumar demasiado peso y perder la técnica|Sube en 1 s, baja en 3 s. Pocas repeticiones.
+planchehold|Apoya las manos con los dedos hacia adelante o afuera, inclina los hombros adelante;Dobla las rodillas hacia el pecho y levántalas del suelo;Mantén los brazos estirados|Dejar la cadera alta o doblar los codos|Mantén 3 a 5 s. Calienta muñecas.
+flhold|Cuélgate de la barra, sube el cuerpo hasta quedar paralelo al suelo;Brazos estirados y hombros hacia abajo;Mantén recto sin arquear|Doblar los codos o arquear|Mantén 3 a 5 s. Respira corto.
+onearmneg|Sube con ayuda a la posición arriba;Baja lento con un solo brazo;Usa una mano para ayudar al volver|Bajar de golpe|Baja en 5 s. Muy exigente: para si duele el codo.
+humanflag|Agarra un poste vertical con una mano arriba y otra abajo;Empuja con la de abajo y tira con la de arriba para subir el cuerpo de lado;Mantén el cuerpo lo más recto posible|Hacerlo sin calentar o en poste resbaloso|Mantén 2 a 3 s. Progresión: solo si tienes poste seguro.
+windshield|Cuélgate de la barra con las piernas arriba en L;Baja las piernas hacia un lado en arco sin tocar;Súbelas al centro y baja al otro lado|Balancearte|Lento y controlado. Exhala al subir al centro.
+toestobar|Cuélgate de la barra y sube las piernas juntas hasta tocarla con los pies;Baja controlado;Evita balancear|Usar el impulso|Sube exhalando, baja en 3 s.
+vsit|Apoya las manos en paralelas y estira los brazos;Sube las piernas rectas hasta formar una V con el cuerpo;Mantén los hombros bajos|Doblar las rodillas|Mantén 3 a 5 s.
+hsfree|Sube a handstand con la patada o el press;Mantén brazos estirados, cuerpo recto y mirada entre las manos;Si caes, sal rodando hacia un lado|Arquear la espalda|Respira lento. Practica con espacio libre.
+presshs|Desde posición de pie o L, apoya las manos;Sube la cadera sobre los hombros con piernas rectas;Termina en handstand controlado|Saltar en vez de subir con fuerza|Lento. Solo con técnica previa y espacio libre.
+pistolw|Sostén un peso ligero al pecho;Haz una pistol squat lenta con el tronco recto;Sube sin impulso|Sumar peso antes de dominar la técnica|Baja en 3 s, sube en 1 s.
+dragonfull|Acuéstate en un banco y agarra algo firme sobre tu cabeza;Sube el cuerpo recto apoyado solo en hombros;Baja con el cuerpo recto sin doblar la cadera|Doblar la cadera o arquear|Baja en 5 s. Progresión avanzada: para si duele la espalda.
+ringdip|Sube a las anillas con brazos estirados y anillas pegadas al cuerpo;Baja doblando los codos controlado;Empuja y gira las anillas ligeramente hacia afuera arriba|Dejar que las anillas se abran|Baja en 3 s, sube en 1 s. Muy inestable: avanza despacio.
+burpeepull|Haz un burpee;Salta hacia la barra y haz una dominada;Baja y repite|Hacerlo rápido sin cuidar la técnica|Controla cada fase. Descansa entre repeticiones.
+jjack|Párate con los pies juntos y brazos a los lados;Salta abriendo piernas y subiendo los brazos;Vuelve al inicio con otro salto|Aterrizar con rodillas rígidas|Ritmo constante. Respira normal.
+squatjump|Baja a una sentadilla;Salta explosivo estirando todo el cuerpo;Aterriza suave y repite|Aterrizar rígido|Salta exhalando.
+mclimb|Posición de plancha alta con brazos estirados;Lleva una rodilla al pecho y cambia rápido;Mantén la cadera baja y el abdomen firme|Subir mucho la cola|Ritmo constante. Respira normal.
+burpee|De pie, baja las manos al suelo y lleva los pies atrás a plancha;Baja el pecho (opcional) y vuelve a saltar con los pies hacia las manos;Salta arriba con brazos extendidos|Arquear la espalda en la plancha|Ritmo moderado. Para si te mareas.
+hknees|Trota en el lugar subiendo las rodillas hasta la cintura;Brazos en carrera, tronco recto;Mantén un ritmo parejo|Inclinarte atrás|Respira normal. Aterriza suave.
+scapfl|Tumbado boca abajo con los brazos en W;Junta los omóplatos como apretando un lápiz;Mantén 1 segundo y suelta|Levantar el cuello|Lento. Exhala al apretar.
+kneepush|Apoya manos y rodillas, cuerpo recto de rodillas a cabeza;Baja el pecho con los codos cerca del cuerpo;Empuja hasta estirar|Hundir la cintura|Baja en 2 s, sube en 1 s.
+shouldertap|En plancha alta, pies algo separados;Toca un hombro con la mano contraria sin mover la cadera;Alterna|Balancear la cadera|Lento y controlado. Respira normal.
+deadbug|Boca arriba con brazos al techo y rodillas a 90 grados;Baja un brazo y la pierna contraria sin despegar la espalda del suelo;Alterna|Arquear la espalda baja|Exhala al estirar. Muy lento.
+reversesnow|Boca abajo con los brazos a los lados;Levanta los brazos y haz un arco amplio sobre la cabeza;Vuelve despacio|Levantar demasiado el cuello|Lento. Respira normal.
+birddog|En manos y rodillas, espalda plana;Estira un brazo y la pierna contraria sin girar la cadera;Vuelve y alterna|Girar la cadera o arquear|Pausa 1 s arriba. Lento.
+bagrow|Con una mochila con libros, inclina el tronco con la espalda recta;Tira la mochila hacia la cadera con los codos pegados;Baja controlado|Redondear la espalda|Sube en 1 s, baja en 2 s. Usa peso moderado.
+tablerow|Acuéstate bajo una mesa firme que no se mueva y agarra el borde;Cuerpo recto, tira del pecho hacia la mesa;Baja controlado|Usar una mesa inestable|Sube en 1 s, baja en 2 s. Prueba que la mesa aguante.
+wallsit|Apoya la espalda en la pared, baja hasta rodillas a 90 grados;Pies bajo las rodillas, talones apoyados;Mantén y respira|Rodillas más adelante de los pies|Respira normal. Sube si el muslo tiembla demasiado.
+calf|Párate de puntas en el borde de un escalón con apoyo de una mano;Sube los talones lo más alto que puedas;Baja despacio|Rebotar|Sube en 1 s, baja en 3 s.
+sidepl|De lado apoyado en el antebrazo, pies apilados;Sube la cadera formando una línea recta;Mantén sin hundirla|Hundir la cadera|Respira normal. Cambia de lado.
+bicycle|Tumbado con manos tras la cabeza (sin tirar del cuello);Lleva el codo a la rodilla contraria alternando;Mantén la espalda baja pegada|Tirar del cuello|Lento. Exhala al girar.
+declinepush|Pies elevados sobre una silla estable, manos en el suelo;Cuerpo recto, baja el pecho;Empuja hasta estirar|Hundir la cintura|Baja en 2 s, sube en 1 s.
+pikeelev|Pies elevados sobre una silla, manos en el suelo, caderas altas;Dobla los codos llevando la cabeza al suelo;Empuja para volver|Perder la posición de V|Baja en 3 s, sube en 1 s.
+clap|Haz una flexión explosiva y despega las manos;Aplaude y vuelve a apoyarlas con codos suaves;Mantén el cuerpo recto|Caer con codos rígidos|Hazlo solo con buena fuerza previa. Descansa bien.`;
+const TECH = {};
+TECH_RAW.split("\n").forEach(l => { const p = l.split("|"); if (p.length >= 4) TECH[p[0]] = {pasos: p[1].split(";"), err: p[2], ritmo: p[3]}; });
+function techHTML(id, open) {
+  const t = TECH[id];
+  if (!t) return "";
+  return '<details class="tech small"' + (open ? " open" : "") + '><summary style="cursor:pointer;color:var(--accent);min-height:32px;font-weight:600">Cómo hacerlo bien</summary><div class="stack s8" style="margin-top:6px">' +
+    '<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">' + t.pasos.map(x => "<li>" + esc(x) + "</li>").join("") + "</ol>" +
+    '<p><b>Evita:</b> ' + esc(t.err) + "</p><p><b>Ritmo:</b> " + esc(t.ritmo) + "</p>" +
+    '<p class="muted">Si algo duele (no el cansancio, sino dolor), para y consulta a un profesional.</p></div></details>';
+}
+const _drawExBase = drawExHTML;
+drawExHTML = function (id) {
+  const inPlayer = typeof PL !== "undefined" && PL && $("#layer .player");
+  return _drawExBase(id) + techHTML(id, inPlayer ? PL.phase !== "work" : true);
+};
+// Pausa de preparación más larga para leer la técnica
+const _setTimerBase = setTimer;
+setTimer = function (sec) { _setTimerBase(PL && PL.pre && sec === 5 ? 12 : sec); };
+
+// Voz guía
+let VOZ = false;
+try { VOZ = localStorage.getItem("rh-voz") === "1"; } catch (e) {}
+function say(txt) {
+  try {
+    if (!VOZ || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt); u.lang = "es-CL"; u.rate = 0.95;
+    const v = speechSynthesis.getVoices().find(x => /^es/i.test(x.lang)); if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+ACT.plvoz = () => {
+  VOZ = !VOZ;
+  try { localStorage.setItem("rh-voz", VOZ ? "1" : "0"); } catch (e) {}
+  if (!VOZ && window.speechSynthesis) window.speechSynthesis.cancel();
+  else say("Voz activada");
+  drawPlayer();
+};
+const _drawPlayerTech = drawPlayer;
+drawPlayer = function () {
+  _drawPlayerTech();
+  if (!PL || PL.phase === "done") { if (window.speechSynthesis) window.speechSynthesis.cancel(); return; }
+  const inner = document.querySelector("#layer .player .inner");
+  if (inner && window.speechSynthesis) {
+    const top = inner.firstElementChild;
+    if (top) { const b = document.createElement("button"); b.className = "btn sm ghost"; b.setAttribute("data-act", "plvoz"); b.setAttribute("aria-pressed", String(VOZ)); b.textContent = VOZ ? "🔊 Voz" : "🔇 Voz"; top.insertBefore(b, top.lastElementChild); }
+  }
+  const s = PL.steps[PL.i], rest = PL.phase === "rest", ex = rest ? (PL.pre ? s : PL.steps[PL.i + 1]) : s;
+  if (!ex) return;
+  const key = PL.phase + ":" + PL.i + ":" + PL.pre;
+  if (PL.said === key) return;
+  PL.said = key;
+  const t = TECH[ex.ex], nm = EX[ex.ex].n;
+  if (rest) say((PL.pre ? "Prepárate. " : "Descanso. Sigue: ") + nm + ". " + (t ? t.pasos.join(". ") : EX[ex.ex].cue));
+  else say("Ya. " + nm + ". " + (t ? t.ritmo : ""));
+};
+// ---------- Coach para principiantes: semana de inicio, hábitos, lecciones, cuestionario, revisión semanal ----------
+const daysBetween = (a, b) => Math.round((parseKey(a) - parseKey(b)) / 864e5);
+function CO() { const p = S.profile; if (!p.coach) { p.coach = {start: todayKey(), guia: {}, hab: {}, les: {}, onb: null, par: "", rev: "", skip: 0}; } return p.coach; }
+// Editar el perfil no debe borrar lo guardado (coach, favoritos, compras, metas…)
+const _savePerfilBase = ACT.saveperfil;
+ACT.saveperfil = function () {
+  const old = S.profile ? Object.assign({}, S.profile) : null;
+  _savePerfilBase();
+  if (old && S.profile && S.profile !== old) { Object.keys(old).forEach(k => { if (!(k in S.profile)) S.profile[k] = old[k]; }); saveProfile(); }
+};
+const menorP = () => esMenor(S.profile);
+
+// ----- Semana de inicio: una tarea por día -----
+function GUIA() {
+  const m = menorP();
+  return [
+    {t: "Toma 4 vasos de agua", d: "Hoy solo hay una meta: 1 litro de agua (4 vasos de 250 ml). Mate o té sin azúcar también cuentan.", auto: () => (S.days[todayKey()] || {}).agua >= 1000, go: "hoy", btn: "Anotar agua"},
+    m ? {t: "Desayuna algo con proteína", d: "Un huevo, leche o yogur, o pan con queso o palta. Empezar el día comiendo ayuda a rendir mejor.", manual: 1}
+      : {t: "Registra tu desayuno", d: "Anota lo que desayunaste en la pestaña Comidas. No importa si es perfecto: lo importante es ver qué comes.", auto: () => { const d = S.days[todayKey()]; return !!(d && d.meals && d.meals.des && d.meals.des.length); }, go: "comidas", btn: "Ir a Comidas"},
+    {t: "Camina 10 minutos", d: "Sal a caminar o sube y baja escaleras 10 minutos. Moverte un poco cada día es la base de todo.", manual: 1},
+    {t: "Haz tu primera rutina", d: "Elige la rutina de hoy y síguela guiada. Si te cuesta, haz la mitad: ya cuenta.", auto: () => ((S.days[todayKey()] || {}).work || []).length > 0, go: "entrenar", btn: "Ir a Entrenar"},
+    {t: "Suma verdura o fruta", d: "Agrega una verdura o fruta al almuerzo y otra en la cena. Una ensalada, tomate, zanahoria o una manzana bastan.", manual: 1},
+    {t: "Lee la lección de hoy", d: "Una lección de 1 minuto en Comidas → Aprende. Entender lo básico hace todo más fácil.", auto: () => Object.keys(CO().les).length > 0, go: "comidas", btn: "Ir a Aprende", nut: "aprende"},
+    {t: "Haz tu revisión de la semana", d: "Mira cómo te fue, qué lograste y qué mejorar. Es tu primer cierre de semana.", auto: () => !!CO().rev, rev: 1, btn: "Hacer revisión"}
+  ];
+}
+function guiaCard() {
+  const c = CO(), g = GUIA(), days = daysBetween(todayKey(), c.start);
+  g.forEach((s, i) => { if (!c.guia[i] && s.auto && s.auto() && i <= days) c.guia[i] = 1; });
+  const done = g.filter((_, i) => c.guia[i]).length;
+  if (done === 7) return days > 9 ? "" : '<div class="card tip good"><i></i><p><b>¡Completaste tu semana de inicio!</b> Ya tienes la base: agua, movimiento, comida y constancia. Sigue con tus rutinas y hábitos.</p></div>';
+  const cur = g.findIndex((_, i) => !c.guia[i]), s = g[cur], locked = cur > days;
+  const dots = '<div class="row" style="gap:6px">' + g.map((_, i) => '<span style="width:10px;height:10px;border-radius:50%;background:' + (c.guia[i] ? "var(--good)" : i === cur ? "var(--accent)" : "var(--line)") + '"></span>').join("") + "</div>";
+  return '<div class="card stack s8"><h3>Tu semana de inicio</h3>' + dots +
+    (locked ? '<p><b>Mañana:</b> ' + esc(s.t) + '</p><p class="small muted">Hoy ya hiciste lo que tocaba. Descansa, mañana sigue la próxima tarea. Ir de a poco es lo que funciona.</p>'
+      : '<p><b>Día ' + (cur + 1) + ' de 7: ' + esc(s.t) + '</b></p><p class="small muted">' + esc(s.d) + "</p>" +
+        '<div class="row wrap">' + (s.manual ? '<button class="btn primary sm" data-act="guiaok" data-i="' + cur + '">Ya lo hice</button>' :
+          s.rev ? '<button class="btn primary sm" data-act="revision">' + s.btn + "</button>" :
+          '<button class="btn primary sm" data-act="guiago" data-i="' + cur + '">' + s.btn + "</button>") + "</div>") + "</div>";
+}
+ACT.guiaok = b => { CO().guia[b.dataset.i] = 1; saveProfile(); render(); toast("¡Bien hecho!"); };
+ACT.guiago = b => { const s = GUIA()[b.dataset.i]; if (s.nut) VIEW.nut = s.nut; VIEW.tab = s.go; render(); };
+
+// ----- Hábitos del día y racha -----
+function habDone(k) {
+  const d = S.days[k] || {}, h = CO().hab[k] || {}, t = calcTargets(S.profile), meta = Math.max(1000, Math.round((t.agua || 2000) * 0.75));
+  return {agua: (d.agua || 0) >= meta, verdura: !!h.v, mover: !!h.m || ((d.work || []).length > 0)};
+}
+const habAll = k => { const x = habDone(k); return x.agua && x.verdura && x.mover; };
+function habStreak() {
+  let n = 0, k = todayKey();
+  if (!habAll(k)) k = addDays(k, -1);
+  while (habAll(k) && n < 400) { n++; k = addDays(k, -1); }
+  return n;
+}
+function habCard() {
+  const k = todayKey(), x = habDone(k), st = habStreak();
+  const row = (id, label, on, auto) => '<button type="button" class="tog" data-act="' + (auto ? "habinfo" : "habtog") + '" data-h="' + id + '" aria-pressed="' + on + '"><i>' + (on ? "✓" : "") + "</i>" + label + "</button>";
+  const ay = S.days[addDays(k, -1)];
+  return '<div class="card stack s8"><div class="row between"><h3>Tus 3 hábitos de hoy</h3><span class="chip' + (st ? " good" : "") + '">' + st + (st === 1 ? " día" : " días") + "</span></div>" +
+    row("agua", "Tomar agua en el día", x.agua, true) + row("verdura", "Comer una verdura o fruta", x.verdura, false) + row("mover", "Moverme 10 minutos o entrenar", x.mover, false) +
+    '<p class="small muted">' + (!ay || !hasContent(ay) ? "Si ayer no pudiste, no pasa nada: hoy empieza de nuevo, con una sola cosa. " : "") + "Mate y té sin azúcar cuentan como agua.</p>" +
+    '<div class="row wrap"><button class="btn sm" data-act="agua" data-ml="250">+ Mate o té 250 ml</button><button class="btn sm ghost" data-act="diadificil">¿Día difícil?</button></div></div>';
+}
+ACT.habtog = b => { const k = todayKey(), h = CO().hab[k] = CO().hab[k] || {}, id = b.dataset.h === "verdura" ? "v" : "m"; h[id] = h[id] ? 0 : 1; saveProfile(); render(); };
+ACT.habinfo = () => toast("El agua se cuenta sola con lo que anotas arriba");
+ACT.diadificil = () => openSheet('<div class="stack"><div class="row between"><h2>Día difícil</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+  '<p>Hay días en que no da la energía. Está bien. <b>Un día no arruina tu proceso.</b> Lo que cuenta es volver.</p>' +
+  '<div class="card stack s8"><h4>Plan mínimo de hoy</h4><p class="small">1) Toma un vaso de agua ahora.<br>2) Haz 6 minutos de movilidad suave.<br>3) Come algo con proteína en tu próxima comida.</p></div>' +
+  '<button class="btn primary block" data-act="start" data-id="warm">Empezar movilidad de 6 minutos</button><button class="btn ghost block" data-act="close">Hoy descanso, y está bien</button></div>');
+
+// ----- Cuestionario de bienvenida y aviso de seguridad -----
+const OPT_Q = () => [
+  ["hora", "¿Cuándo prefieres entrenar?", [["manana", "Mañana"], ["tarde", "Tarde"], ["noche", "Noche"]]],
+  ["tiempo", "¿Cuánto tiempo tienes por día?", [["10", "10 min"], ["20", "20 min"], ["30", "30 min"], ["45", "45 min o más"]]],
+  ["cocina", "¿Quién cocina en tu casa?", [["yo", "Yo"], ["familia", "Mi familia"], ["comprado", "Compro hecho"]]],
+  ["presup", "¿Cómo está tu presupuesto para comida?", [["ajustado", "Ajustado"], ["medio", "Normal"], ["flexible", "Flexible"]]],
+  ["molestia", "¿Tienes alguna molestia o zona delicada?", [["ninguna", "Ninguna"], ["rodillas", "Rodillas"], ["espalda", "Espalda"], ["munecas", "Muñecas"], ["hombros", "Hombros"]]]
+].filter(q => !(menorP() && q[0] === "presup"));
+const PAR_Q = [["pecho", "Dolor en el pecho al hacer esfuerzo"], ["mareo", "Mareos o desmayos"], ["salud", "Problema del corazón o presión alta indicado por un médico"], ["emb", "Embarazo o posparto reciente"], ["lesion", "Lesión o cirugía reciente"]];
+let PARSEL = {};
+ACT.onbabrir = () => {
+  const c = CO(), o = c.onb || {};
+  PARSEL = {};
+  openSheet('<div class="stack"><div class="row between"><h2>Cuéntame de ti</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+    '<p class="small muted">Con esto Ana adapta sus consejos. Se queda solo en tu teléfono.</p>' +
+    OPT_Q().map(q => '<div><h4 style="margin-bottom:6px">' + q[1] + "</h4>" + segHTML("o_" + q[0], q[2], o[q[0]] || "") + "</div>").join("") +
+    '<div class="card stack s8"><h4>Seguridad: ¿te pasa algo de esto?</h4><p class="small muted">Marca solo lo que corresponda.</p>' +
+    PAR_Q.map(([id, l]) => '<button type="button" class="tog" data-act="partog" data-id="' + id + '" aria-pressed="false"><i></i>' + l + "</button>").join("") + "</div>" +
+    '<button class="btn primary block" data-act="onbok">Guardar</button><button class="btn ghost block" data-act="onbsaltar">Ahora no</button></div>');
+};
+ACT.partog = b => { const id = b.dataset.id; PARSEL[id] = !PARSEL[id]; b.setAttribute("aria-pressed", String(!!PARSEL[id])); b.querySelector("i").textContent = PARSEL[id] ? "✓" : ""; };
+ACT.onbsaltar = () => { CO().skip = Date.now(); saveProfile(); closeSheet(); render(); };
+ACT.onbok = () => {
+  const c = CO(), o = {};
+  OPT_Q().forEach(q => { o[q[0]] = segVal("o_" + q[0]) || ""; });
+  c.onb = o; c.par = Object.keys(PARSEL).some(k => PARSEL[k]) ? "consultar" : "ok";
+  saveProfile(); closeSheet(); render();
+  toast("Listo, Ana ya sabe más de ti");
+  if (c.par === "consultar") openSheet('<div class="stack"><div class="row between"><h2>Antes de entrenar</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+    "<p>" + (menorP() ? "Habla con un adulto de confianza y con un profesional de salud antes de empezar a entrenar." : "Por lo que marcaste, lo mejor es que consultes con tu médico antes de entrenar fuerte.") + "</p>" +
+    '<p class="small muted">Esta app no reemplaza una evaluación médica. Mientras tanto puedes hacer movilidad suave y caminar, si te sientes bien.</p><button class="btn block" data-act="close">Entendido</button></div>');
+};
+function onbCard() {
+  const c = CO(), p = S.profile;
+  let h = "";
+  if (!c.onb && Date.now() - (c.skip || 0) > 3 * 864e5) h += '<div class="card stack s8"><h3>Cuéntame de ti (1 minuto)</h3><p class="small muted">Tu horario, tu tiempo, quién cocina y si tienes alguna molestia. Así Ana te da un plan realista.</p><button class="btn primary sm" data-act="onbabrir">Responder</button></div>';
+  if (c.par === "consultar") h += '<div class="card tip warn"><i></i><p>Marcaste algo en las preguntas de seguridad: consulta con tu médico antes de entrenar fuerte.</p></div>';
+  if (!menorP()) { const bmi = p.peso / Math.pow(p.estatura / 100, 2); if (bmi >= 35) h += '<div class="card tip warn"><i></i><p>Con tu IMC conviene que un médico o nutricionista te acompañe antes de un plan intenso. Empieza con caminatas y rutinas suaves.</p></div>'; }
+  return h;
+}
+
+// ----- Revisión semanal -----
+const weekKeyNow = () => addDays(todayKey(), -parseKey(todayKey()).getDay());
+function revisionHTML() {
+  const p = S.profile, menor = menorP(), a = weeklyData(0), t = calcTargets(p), c = CO();
+  let full = 0; for (let i = 0; i < 7; i++) if (habAll(addDays(todayKey(), -i))) full++;
+  const logros = [];
+  if (a.ent > 0) logros.push("Entrenaste " + a.ent + (a.ent === 1 ? " vez" : " veces") + " esta semana.");
+  if (a.aguaD >= 4) logros.push("Anotaste agua " + a.aguaD + " días.");
+  if (!menor && a.kcalD >= 3) logros.push("Registraste tus comidas " + a.kcalD + " días.");
+  if (full > 0) logros.push("Cumpliste tus 3 hábitos " + full + (full === 1 ? " día." : " días."));
+  if (!logros.length) logros.push("Llegaste hasta aquí. Eso ya es empezar.");
+  const mej = a.dias < p.dias ? "Sumar " + (p.dias - a.dias) + " día(s) de entrenamiento más para llegar a tus " + p.dias + " planificados." : (a.aguaD && a.agua / 7 < t.agua * 0.7 ? "Tomar más agua durante el día: deja una botella a la vista." : "Mantener lo que estás haciendo y sumar una repetición más en tus ejercicios.");
+  const obj = a.ent === 0 ? "Hacer 2 rutinas cortas la próxima semana." : "Repetir " + a.ent + " entrenos y sumar 1 repetición por ejercicio.";
+  return '<div class="stack"><div class="row between"><h2>Revisión de la semana</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+    '<div class="card stack s8"><h4>3 logros</h4>' + logros.slice(0, 3).map(x => '<p class="small">✓ ' + esc(x) + "</p>").join("") + "</div>" +
+    '<div class="card stack s8"><h4>1 cosa para mejorar</h4><p class="small">' + esc(mej) + "</p></div>" +
+    '<div class="card stack s8"><h4>Tu objetivo para la próxima semana</h4><p class="small">' + esc(obj) + "</p></div>" +
+    (c.rev === weekKeyNow() ? '<p class="small muted">Esta semana ya la cerraste.</p>' : '<button class="btn primary block" data-act="revok">Cerrar la semana</button>') + "</div>";
+}
+ACT.revision = () => openSheet(revisionHTML());
+ACT.revok = () => { CO().rev = weekKeyNow(); saveProfile(); closeSheet(); render(); toast("Semana cerrada. ¡Buen trabajo!"); };
+function revCard() { return parseKey(todayKey()).getDay() === 0 && CO().rev !== weekKeyNow() ? '<div class="card stack s8"><h3>Revisión de la semana</h3><p class="small muted">Hoy cierras la semana: 3 logros, 1 mejora y tu objetivo.</p><button class="btn primary sm" data-act="revision">Hacer revisión</button></div>' : ""; }
+
+// ----- Lecciones, plato y semáforo -----
+const LES_A = [
+  ["Proteínas: tu material de construcción", "Las proteínas reparan y construyen músculo. Buenas fuentes: huevo, pollo, pavo, pescado, atún, legumbres, yogur y queso fresco. Intenta incluir una en cada comida."],
+  ["Agua e infusiones", "Tomar agua durante el día mejora energía y concentración. Mate, té y café sin azúcar suman. Si tu orina es muy oscura, falta agua."],
+  ["Dormir también es entrenar", "El músculo se recupera durmiendo. Apunta a 7 a 9 horas, a horarios parecidos, y baja las pantallas 30 minutos antes."],
+  ["Leer una etiqueta", "Mira primero la porción y luego las calorías por porción. Los sellos negros «ALTO EN» te avisan de exceso de azúcar, grasas saturadas, sodio o calorías."],
+  ["Arma tu plato", "Mitad verduras, un cuarto proteína y un cuarto carbohidrato (arroz, papas, pan, fideos). Suma un poco de grasa buena: palta, nueces o aceite de oliva."],
+  ["Cuánto entrenar al inicio", "Empieza con 2 o 3 días por semana y descansa entre ellos. Más no es mejor: la mejora ocurre cuando te recuperas."],
+  ["Calentar y cuidar la técnica", "Calienta 3 a 5 minutos antes de entrenar. Haz pocas repeticiones bien hechas antes que muchas mal. El dolor es una señal para parar."],
+  ["Si faltas un día", "No tienes que compensar ni castigarte. Retoma en la siguiente comida o al día siguiente. La constancia pesa más que la perfección."],
+  ["Hambre y saciedad", "Come despacio y para cuando estés cómoda, no llena. Proteínas, fibra y agua te dan saciedad."],
+  ["Verduras y fibra", "La fibra ayuda a la digestión y la saciedad. Varía colores: zanahoria, tomate, lechuga, espinaca, zapallo. Congeladas también sirven."],
+  ["Planifica tus compras", "Decide 3 almuerzos y 3 cenas de la semana y compra para eso. Legumbres, huevos, avena y arroz son económicos y nutritivos."],
+  ["El peso no es todo", "El peso sube y baja 1 o 2 kilos en el día por agua y comida. Mira el promedio de 4 semanas, tus medidas, tus fotos y cómo te sientes."],
+  ["Progresar de a poco", "Suma una repetición o un segundo más cada semana. Si todo se vuelve fácil, sube de nivel."],
+  ["Hábito antes que motivación", "La motivación va y viene. Los hábitos pequeños, a la misma hora, se vuelven automáticos. Parte con 5 minutos."]
+];
+const LES_J = [
+  ["Dormir para crecer y rendir", "Tu cuerpo se recupera y crece mientras duermes. Intenta dormir 8 a 10 horas y bajar el celular antes de acostarte."],
+  ["Agua durante el día", "Toma agua en el colegio y al entrenar. Te ayuda a concentrarte y a tener energía."],
+  ["Desayuna", "Un desayuno con algo de proteína (huevo, leche, yogur, pan con queso) te da energía para la mañana."],
+  ["Come variado", "Frutas, verduras, legumbres, pan, lácteos, huevo, pollo o pescado. Ningún alimento es el enemigo; la variedad es lo importante."],
+  ["Técnica antes que fuerza", "Hacer pocas repeticiones bien hechas es mejor que muchas mal. Mira el dibujo y sigue los pasos de cada ejercicio."],
+  ["Descansar es parte del plan", "Tus músculos mejoran en el descanso. No entrenes todos los días sin pausas."],
+  ["Calentar siempre", "Dedica 3 a 5 minutos a calentar muñecas, hombros y caderas."],
+  ["Constancia", "Mejor 10 minutos 3 veces por semana que una hora una sola vez. Pequeño y seguido funciona."],
+  ["Escucha a tu cuerpo", "El cansancio es normal, el dolor no. Si algo duele, para y cuéntaselo a un adulto de confianza."],
+  ["Pedir ayuda está bien", "Si te sientes mal, triste o incómodo con tu cuerpo, habla con un adulto de confianza o un profesional de salud."]
+];
+const LES = () => menorP() ? LES_J : LES_A;
+function plateHTML() {
+  return '<div class="card stack s8"><h3>Tu plato</h3><div class="row" style="gap:16px;align-items:center"><svg viewBox="0 0 100 100" width="130" height="130" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="var(--surface2)" stroke="var(--line)"/>' +
+    '<path d="M50 50 L50 4 A46 46 0 0 1 50 96 Z" fill="#4CAF7A"/><path d="M50 50 L50 96 A46 46 0 0 1 4 50 Z" fill="#E8A33D"/><path d="M50 50 L4 50 A46 46 0 0 1 50 4 Z" fill="#E4604F"/></svg>' +
+    '<div class="small stack s8"><span><b style="color:#4CAF7A">½ Verduras</b></span><span><b style="color:#E4604F">¼ Proteína</b></span><span><b style="color:#E8A33D">¼ Carbohidrato</b></span></div></div>' +
+    '<p class="small muted">Medidas con tu mano: <b>palma</b> = proteína, <b>puño</b> = carbohidrato, <b>pulgar</b> = grasa, <b>dos manos juntas</b> = verduras.</p></div>';
+}
+function semaforoHTML() {
+  if (menorP()) return "";
+  const r = (c, t, l) => '<div><b style="color:' + c + '">' + t + '</b><p class="small muted">' + l + "</p></div>";
+  return '<div class="card stack s8"><h3>Alimentos con semáforo</h3>' +
+    r("#4CAF7A", "Verde · come seguido", "Verduras, frutas, legumbres, huevo, pescado, pollo, yogur natural, avena, agua.") +
+    r("#E8A33D", "Amarillo · modera", "Pan, arroz, pasta, papas, queso, palta, frutos secos, jugos naturales.") +
+    r("#E4604F", "Rojo · ocasional", "Bebidas azucaradas, frituras, dulces, embutidos, alcohol. No está prohibido: solo no es el día a día.") +
+    '<p class="note">Es una guía general, no una dieta. Sin culpa: lo que cuenta es lo que haces casi siempre.</p></div>';
+}
+function aprendeHTML() {
+  const c = CO(), les = LES(), days = daysBetween(todayKey(), c.start);
+  return plateHTML() + semaforoHTML() + '<div class="card stack s8"><h3>Lecciones de 1 minuto</h3><p class="small muted">Una nueva cada día. Lee de a una.</p>' +
+    les.map((l, i) => i <= days ? '<button type="button" class="btn block" style="text-align:left" data-act="leccion" data-i="' + i + '">' + (c.les[i] ? "✓ " : "") + (i + 1) + ". " + esc(l[0]) + "</button>"
+      : '<div class="item"><span class="muted">🔒 ' + (i + 1) + ". Disponible en " + (i - days) + (i - days === 1 ? " día" : " días") + "</span></div>").join("") + "</div>";
+}
+ACT.leccion = b => {
+  const i = Number(b.dataset.i), l = LES()[i];
+  openSheet('<div class="stack"><div class="row between"><h2>Lección ' + (i + 1) + '</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div><h3>' + esc(l[0]) + "</h3><p>" + esc(l[1]) + '</p><button class="btn primary block" data-act="lecok" data-i="' + i + '">Leída ✓</button></div>');
+};
+ACT.lecok = b => { CO().les[b.dataset.i] = 1; saveProfile(); closeSheet(); render(); };
+const _comidasApr = RENDER.comidas;
+RENDER.comidas = () => {
+  let h;
+  if (VIEW.nut === "aprende") {
+    VIEW.nut = "tips"; h = _comidasApr(); VIEW.nut = "aprende";
+    const i = h.indexOf("</div>", h.indexOf('aria-label="Sección"')) + 6, j = h.lastIndexOf("</div>");
+    h = h.slice(0, i) + aprendeHTML() + h.slice(j);
+    h = h.replace('aria-pressed="true">Tips', 'aria-pressed="false">Tips');
+  } else h = _comidasApr();
+  return h.replace(/(aria-label="Sección">[\s\S]*?)<\/div>/, '$1<button type="button" data-act="nutv" data-v="aprende" aria-pressed="' + (VIEW.nut === "aprende") + '">Aprende</button></div>');
+};
+
+// ----- Hoy y Ana -----
+const _hoyCoach = RENDER.hoy;
+RENDER.hoy = () => {
+  const h = _hoyCoach(), i = h.indexOf("</div>", h.indexOf("<h1>")) + 6;
+  return h.slice(0, i) + guiaCard() + onbCard() + revCard() + habCard() + h.slice(i);
+};
+const _anaCoach = RENDER.ana;
+RENDER.ana = () => {
+  const h = _anaCoach(), i = h.indexOf("</div>", h.indexOf("<h1>")) + 6;
+  return h.slice(0, i) + '<div class="card stack s8"><h3>Tu coach</h3><div class="row wrap"><button class="btn sm" data-act="onbabrir">Cuéntame de ti</button><button class="btn sm" data-act="revision">Revisión semanal</button></div></div>' + h.slice(i);
+};
+// Ana usa lo que contaste
+const _anaCtxCoach = anaContext;
+anaContext = function () {
+  let c = _anaCtxCoach();
+  const o = S.profile.coach && S.profile.coach.onb;
+  if (o) c += "\nPreferencias: entrena en la " + (o.hora || "?") + ", tiene " + (o.tiempo || "?") + " minutos por día, cocina: " + (o.cocina || "?") + (o.presup ? ", presupuesto " + o.presup : "") + ", molestias: " + (o.molestia || "ninguna") + ".";
+  return c;
+};
+const _anaTipsCoach = anaTips;
+anaTips = function () {
+  const out = _anaTipsCoach(), o = S.profile.coach && S.profile.coach.onb;
+  if (o && o.molestia && o.molestia !== "ninguna") out.unshift({k: "warn", m: "Cuida tu zona delicada (" + o.molestia.replace("munecas", "muñecas") + "): baja el rango de movimiento, elige la versión fácil y para si hay dolor. Si persiste, consulta con un kinesiólogo."});
+  return out;
+};
+// ---------- Permisos de la app: qué usa, para qué, y cómo cambiarlos ----------
+async function permState(name) {
+  try { if (navigator.permissions && navigator.permissions.query) { const r = await navigator.permissions.query({name}); return r.state; } } catch (e) {}
+  return "unknown";
+}
+async function permInfo() {
+  const notif = "Notification" in window ? Notification.permission : "unsupported";
+  const cam = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? "unsupported" : await permState("camera");
+  let stor = "unsupported";
+  try { if (navigator.storage && navigator.storage.persisted) stor = (await navigator.storage.persisted()) ? "granted" : "default"; } catch (e) {}
+  return {notif, cam, bt: hrSupported() ? "available" : "unsupported", stor, wake: "wakeLock" in navigator ? "available" : "unsupported"};
+}
+const PTXT = {granted: ["Permitido", "var(--good)"], denied: ["Bloqueado", "var(--bad)"], default: ["Sin decidir", "var(--muted)"], prompt: ["Sin decidir", "var(--muted)"], unknown: ["Se pide al usarlo", "var(--muted)"],
+  unsupported: ["No disponible aquí", "var(--muted)"], available: ["Disponible", "var(--good)"]};
+const pChip = s => { const t = PTXT[s] || PTXT.unknown; return '<span class="small" style="color:' + t[1] + ';font-weight:600">' + t[0] + "</span>"; };
+const HOWFIX = '<p class="small muted">Para cambiarlo: Ajustes del teléfono → Apps → Chrome (o SkarlataFit) → Permisos.</p>';
+function permisosBody(i) {
+  const row = (t, why, st, extra) => '<div class="card stack s8"><div class="row between"><h4>' + t + "</h4>" + pChip(st) + '</div><p class="small muted">' + why + "</p>" + (extra || "") + "</div>";
+  return row("Notificaciones", "Para recordatorios de agua y de tu hora de entrenar. Solo los que tú actives, nada de publicidad.", i.notif,
+      i.notif === "default" ? '<button class="btn sm" data-act="pnotif">Activar avisos</button>' : i.notif === "denied" ? HOWFIX : "") +
+    row("Cámara", "Solo para leer el código de barras de los productos. No se guardan ni se envían fotos ni video.", i.cam,
+      i.cam !== "unsupported" && i.cam !== "granted" && i.cam !== "denied" ? '<button class="btn sm" data-act="pcam">Probar cámara</button>' : i.cam === "denied" ? HOWFIX : "") +
+    row("Bluetooth", "Para conectar tu reloj o banda y ver tu pulso. El navegador te deja elegir el dispositivo cada vez; la app no se conecta sola.", i.bt,
+      i.bt === "unsupported" ? '<p class="small muted">Funciona en Chrome para Android con la app instalada.</p>' : "") +
+    row("Proteger mis datos", "Pide al teléfono que no borre automáticamente tus datos cuando le falte espacio. Igual haz respaldos de vez en cuando.", i.stor,
+      i.stor === "default" ? '<button class="btn sm" data-act="pstor">Proteger mis datos</button>' : "") +
+    row("Pantalla encendida", "Durante una rutina guiada la pantalla no se apaga. No necesita permiso.", i.wake) +
+    '<div class="card stack s8"><h4>Lo que NO usa</h4><p class="small muted">Ubicación, micrófono, contactos, mensajes ni archivos de tu teléfono (solo los que tú elijas al importar o restaurar). Tus datos se guardan en este teléfono.</p></div>';
+}
+async function showPermisos() {
+  const i = await permInfo();
+  openSheet('<div class="stack"><div class="row between"><h2>Permisos de la app</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+    '<p class="small muted">SkarlataFit pide cada permiso solo cuando lo necesitas, y te explica para qué.</p><div id="perm-body" class="stack">' + permisosBody(i) + "</div></div>");
+}
+ACT.permisos = () => { showPermisos(); };
+async function refreshPermisos() { const el = $("#perm-body"); if (el) el.innerHTML = permisosBody(await permInfo()); }
+ACT.pnotif = async () => {
+  try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Avisos activados" : "No se activaron los avisos"); } catch (e) {}
+  refreshPermisos();
+};
+ACT.pcam = async () => {
+  try { const st = await navigator.mediaDevices.getUserMedia({video: true}); st.getTracks().forEach(t => t.stop()); toast("La cámara funciona"); }
+  catch (e) { toast("No se pudo usar la cámara"); }
+  refreshPermisos();
+};
+ACT.pstor = async () => {
+  try { const ok = await navigator.storage.persist(); toast(ok ? "Datos protegidos" : "El teléfono no lo permitió. Haz respaldos."); } catch (e) {}
+  refreshPermisos();
+};
+const _ajustesPerm = ajustesHTML;
+ajustesHTML = function () { return _ajustesPerm().replace('<button class="btn ghost block" data-act="irrespaldo">', '<button class="btn block" data-act="permisos">Permisos de la app</button><button class="btn ghost block" data-act="irrespaldo">'); };
+// Protección de datos en silencio al usar la app instalada
+setTimeout(() => { try { if (typeof STANDALONE !== "undefined" && STANDALONE && navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {} }, 2000);
 // ---------- Resumen semanal de Ana, gráfico de medidas y avisos ----------
 function weeklyData(offset) {
   const k0 = todayKey(), out = {ent: 0, dias: 0, agua: 0, aguaD: 0, kcal: 0, kcalD: 0, prot: 0, best: null};
@@ -2554,7 +2994,7 @@ function medidasChart() {
 }
 ACT.medsel = b => { VIEW.med = b.dataset.k; render(); };
 // ---------- Secciones plegables ----------
-const PLG_DEF = ["Todas las rutinas", "Test de nivel", "Metas de habilidad", "Tus metas diarias", "Mi fuerza", "Logros", "Reloj y pulso", "Respaldo de tus datos", "Instala SkarlataFit", "Calorías, últimos 7 días"];
+const PLG_DEF = ["Todas las rutinas", "Test de nivel", "Metas de habilidad", "Tus metas diarias", "Mi fuerza", "Logros", "Reloj y pulso", "Respaldo de tus datos", "Instala SkarlataFit", "Calorías, últimos 7 días", "Cómo leer tu peso", "Permisos"];
 let PLG = {};
 try { PLG = JSON.parse(localStorage.getItem("rh-plegado") || "{}") || {}; } catch (e) { PLG = {}; }
 const plgKey = t => (S.profile ? VIEW.tab : "perfil") + "|" + t;
