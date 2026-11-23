@@ -1305,7 +1305,7 @@ ACT.calday = b => {
 ACT.calpick = b => {
   const k = b.dataset.k, custom = S.profile.agenda && S.profile.agenda[k];
   openSheet('<div class="stack"><div class="row between"><h2>' + esc(longDate(k)) + '</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
-    '<p class="muted">Elige qué entrenar ese día.</p>' + (esMenor(S.profile) ? ROUTINES.filter(r => r.nivel === "Juvenil" || r.id === "warm") : ROUTINES).map(r =>
+    '<p class="muted">Elige qué entrenar ese día.</p>' + (esMenor(S.profile) ? ROUTINES.filter(r => r.nivel === "Juvenil" || r.id === "warm" || r.teen) : ROUTINES).map(r =>
       '<button class="btn block" style="text-align:left" data-act="calset" data-k="' + k + '" data-id="' + r.id + '"><b>' + esc(r.name) + '</b> <span class="muted">· ' + r.min + " min</span></button>").join("") +
     '<button class="btn block" data-act="calset" data-k="' + k + '" data-id="rest">Descanso</button>' +
     (custom ? '<button class="btn ghost block" data-act="calset" data-k="' + k + '" data-id="">Volver al plan normal</button>' : "") + "</div>");
@@ -3015,7 +3015,7 @@ ACT.tlstep = b => {
 
 // ===== Rutinas propias =====
 let RB = null;
-const exOk = id => { if (!menorP()) return true; return ROUTINES.some(r => !r.u && (r.nivel === "Juvenil" || r.id === "warm") && r.blocks.some(b => b[0] === id)); };
+const exOk = id => { if (!menorP()) return true; return ROUTINES.some(r => !r.u && (r.nivel === "Juvenil" || r.id === "warm" || r.teen) && r.blocks.some(b => b[0] === id)); };
 function syncMis() {
   for (let k = ROUTINES.length - 1; k >= 0; k--) if (ROUTINES[k].u) ROUTINES.splice(k, 1);
   Object.keys(EX).forEach(k => { if (k.indexOf("u_") === 0) delete EX[k]; });
@@ -3092,7 +3092,7 @@ ACT.mrsave = () => {
   saveProfile(); syncMis(); closeSheet(); render(); toast("Rutina guardada");
 };
 ACT.mrcopiar = () => openSheet('<div class="stack"><div class="row between"><h2>Copiar una rutina</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div><p class="small muted">Elige una rutina del plan y ajústala a tu gusto.</p>' +
-  ROUTINES.filter(r => !r.u && (!menorP() || r.nivel === "Juvenil" || r.id === "warm")).map(r => '<button type="button" class="btn block" style="text-align:left" data-act="mrcopiok" data-id="' + r.id + '"><b>' + esc(r.name) + '</b> <span class="muted small">· ' + r.min + " min</span></button>").join("") + "</div>");
+  ROUTINES.filter(r => !r.u && (!menorP() || r.nivel === "Juvenil" || r.id === "warm" || r.teen)).map(r => '<button type="button" class="btn block" style="text-align:left" data-act="mrcopiok" data-id="' + r.id + '"><b>' + esc(r.name) + '</b> <span class="muted small">· ' + r.min + " min</span></button>").join("") + "</div>");
 ACT.mrcopiok = b => {
   const r = routineById(b.dataset.id), blocks = r.circuit ? r.blocks.map(x => ({ex: x[0], sets: r.rounds, target: Number(String(x[2]).match(/\d+/g).pop()), rest: x[3]})) : r.blocks.map(x => ({ex: x[0], sets: x[1], target: Number(String(x[2]).match(/\d+/g).pop()), rest: x[3]}));
   RB = {id: null, name: "Mi " + r.name.slice(0, 30), blocks, del: false}; rbShow();
@@ -3118,6 +3118,324 @@ const _renderMis = render;
 render = function () { try { syncMis(); } catch (e) {} _renderMis(); };
 const _drawExMis = drawExHTML;
 drawExHTML = function (id) { return String(id).indexOf("u_") === 0 ? '<p class="small muted">Ejercicio propio: sin dibujo.</p>' : _drawExMis(id); };
+// ---------- Estructura más práctica: Hoy con acción principal y Entrenar por secciones ----------
+function miniRing(pct, color, inner) {
+  const C = 2 * Math.PI * 18, v = Math.max(0, Math.min(1, pct)) * C;
+  return '<div class="mring"><svg viewBox="0 0 44 44" width="68" height="68" aria-hidden="true"><circle cx="22" cy="22" r="18" fill="none" stroke="var(--line)" stroke-width="5"/>' +
+    '<circle cx="22" cy="22" r="18" fill="none" stroke="' + color + '" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + v.toFixed(1) + " " + C.toFixed(1) + '" transform="rotate(-90 22 22)"/></svg><span class="mv">' + inner + "</span></div>";
+}
+RENDER.hoy = () => {
+  const p = S.profile, menor = esMenor(p), t = calcTargets(p), k = todayKey(), d = getDay(k), tot = dayTotals(d);
+  const r = todaysRoutine(), done = d.work.length > 0, tips = anaTips();
+  const hb = habDone(k), hn = [hb.agua, hb.verdura, hb.mover].filter(Boolean).length;
+  const drops = Math.round(t.agua / 250), filled = Math.min(drops, Math.floor(d.agua / 250));
+  const left = menor ? 0 : t.kcal - tot.k;
+  const cta = '<div class="card cta"><span class="small muted">' + (r ? "Hoy toca" : "Hoy") + "</span>" + (r
+    ? '<div class="cta-t">' + esc(r.name) + '</div><p class="small muted">' + r.min + " min · " + esc(r.desc) + "</p>" +
+      '<button class="btn primary block big" data-act="start" data-id="' + r.id + '">' + (done ? "Entrenar otra vez" : "Empezar entrenamiento") + "</button>" +
+      '<div class="row between small">' + (done ? '<span class="chip good">✓ Hecho hoy</span>' : "<span></span>") + '<button class="linkb" data-act="verrutina" data-id="' + r.id + '">Ver los ejercicios</button></div>'
+    : '<div class="cta-t">Día de descanso</div><p class="small muted">Descansar también es entrenar. Si quieres, haz movilidad suave.</p><button class="btn block big" data-act="start" data-id="warm">Movilidad de 6 minutos</button>') + "</div>";
+  const rings = '<div class="rings3' + (menor ? " two" : "") + '">' +
+    '<button type="button" class="rcard" data-act="agua" data-ml="250" aria-label="Sumar un vaso de agua">' + miniRing(d.agua / t.agua, "var(--water)", fmt(d.agua / 1000, 1)) + '<b>Agua</b><span class="small muted">' + fmt(d.agua / 1000, 1) + " de " + fmt(t.agua / 1000, 1) + " L · +1 vaso</span></button>" +
+    (menor ? "" : '<button type="button" class="rcard" data-act="tab" data-tab="comidas" aria-label="Ir a Comer">' + miniRing(tot.k / t.kcal, left < 0 ? "var(--warn)" : "var(--accent)", fmt(Math.abs(left))) + "<b>" + (left < 0 ? "Sobre la meta" : "Te quedan") + '</b><span class="small muted">kcal · registrar</span></button>') +
+    '<button type="button" class="rcard" data-act="hoyhab" aria-label="Ver mis hábitos">' + miniRing(hn / 3, "var(--good)", hn + "/3") + '<b>Hábitos</b><span class="small muted">' + (habStreak() ? "racha " + habStreak() : "de hoy") + "</span></button></div>";
+  const tip = tips[0] ? '<div class="card tip ' + tips[0].k + '"><i></i><p>' + esc(tips[0].m) + "</p></div>" : "";
+  const macros = menor ? "" : '<div class="card stack"><h3>Calorías y macros</h3><div class="row between"><span class="muted">Comidas</span><span class="num" style="font-size:20px">' + fmt(tot.k) + " / " + fmt(t.kcal) + ' kcal</span></div><div class="small muted">Quemadas entrenando: <b style="color:var(--ink)">' + fmt(burned(d)) + " kcal</b></div>" +
+    '<div class="stack">' + macroBar("Proteína", tot.p, t.prot, "var(--accent)") + macroBar("Carbohidratos", tot.c, t.carb, "var(--carb)") + macroBar("Grasas", tot.f, t.fat, "var(--fat)") + '</div><button class="btn block" data-act="tab" data-tab="comidas">Registrar comida</button></div>';
+  const agua = '<div class="card stack"><h3>Agua</h3><div class="drops" aria-hidden="true">' + Array.from({length: drops}, (_, i) => '<span class="drop' + (i < filled ? " on" : "") + '"></span>').join("") + "</div>" +
+    '<div class="row wrap"><button class="btn sm" data-act="agua" data-ml="250">+ Vaso 250 ml</button><button class="btn sm" data-act="agua" data-ml="500">+ Botella 500 ml</button><button class="btn sm ghost" data-act="agua" data-ml="-250">Quitar 250</button></div></div>';
+  const mas = tips.slice(1, 4).length ? '<div class="card stack s8"><h3>Más consejos de Ana</h3>' + tips.slice(1, 4).map(x => '<p class="small">• ' + esc(x.m) + "</p>").join("") + '<button class="btn ghost block" data-act="tab" data-tab="ana">Preguntarle a Ana</button></div>' : "";
+  return '<div class="stack"><div><h1>Hola' + (p.nombre ? ", " + esc(p.nombre) : "") + '</h1><p class="muted">' + esc(longDate(k)) + (streak() > 1 ? " · racha de " + streak() + " días" : "") + "</p></div>" +
+    cta + rings + guiaCard() + onbCard() + revCard() + tip + macros + agua + habCard().replace('<div class="card stack s8">', '<div class="card stack s8" id="hab-card">') + mas +
+    '<button class="btn ghost block" data-act="editperfil">Editar perfil y metas</button></div>';
+};
+ACT.hoyhab = () => { const e = $("#hab-card"); if (!e) return; const b = e.querySelector(".plg-body"); if (b && b.classList.contains("off")) ACT.plg(e.querySelector(".plg-h")); e.scrollIntoView({behavior: "smooth", block: "center"}); };
+
+// ----- Entrenar por secciones -----
+VIEW.es = "plan";
+const ENT_SUBS = [["plan", "Mi plan"], ["rutinas", "Rutinas"], ["cal", "Calendario"], ["mias", "Mis rutinas"]];
+const _entrenarEst = RENDER.entrenar;
+RENDER.entrenar = () => {
+  const html = _entrenarEst(), doc = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html"), root = doc.body.firstElementChild;
+  const groups = {plan: [], rutinas: [], cal: [], mias: []};
+  let head = "";
+  Array.from(root.children).forEach((c, i) => {
+    const h = c.querySelector("h1,h2,h3,h4"), ti = h ? h.textContent : "";
+    if (i === 0) { head = c.outerHTML; return; }
+    if (/^Mis rutinas|^Cronómetro/.test(ti)) groups.mias.push(c.outerHTML);
+    else if (/^Todas las rutinas/.test(ti) || (c.tagName === "P" && c.classList.contains("note"))) groups.rutinas.push(c.outerHTML);
+    else if (/\d{4}\s*$/.test(ti.replace(/▾/g, "").trim())) groups.cal.push(c.outerHTML);
+    else groups.plan.push(c.outerHTML);
+  });
+  const w = groups.plan.findIndex(x => /Esta semana/.test(x.slice(0, 400)));
+  if (w > 0) groups.plan.unshift(groups.plan.splice(w, 1)[0]);
+  const seg = '<div class="seg subnav" role="group" aria-label="Secciones de entrenamiento">' + ENT_SUBS.map(([v, l]) => '<button type="button" data-act="entsub" data-v="' + v + '" aria-pressed="' + (VIEW.es === v) + '">' + l + "</button>").join("") + "</div>";
+  return '<div class="stack">' + head + seg + (groups[VIEW.es] || groups.plan).join("") + "</div>";
+};
+ACT.entsub = b => { VIEW.es = b.dataset.v; render(); window.scrollTo(0, 0); };
+// El calendario y los ajustes de rutina siguen funcionando igual; "Mis rutinas" se abre directo desde Hoy si hace falta
+(function () {
+  const st = document.createElement("style");
+  st.textContent = ".cta{background:var(--ink);color:var(--bg);border:0;display:flex;flex-direction:column;gap:8px}" +
+    ".cta .muted,.cta .small{color:var(--bg);opacity:.82}.cta-t{font-size:24px;font-weight:700;line-height:1.15}" +
+    ".cta .chip{background:var(--good);color:#fff;opacity:1}.linkb{background:none;border:0;color:var(--bg);text-decoration:underline;min-height:36px;font:inherit;cursor:pointer}" +
+    ".btn.big{min-height:52px;font-size:17px}.rings3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rings3.two{grid-template-columns:repeat(2,1fr)}" +
+    ".rcard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font:inherit;text-align:center;cursor:pointer;min-height:130px}" +
+    ".mring{position:relative;width:68px;height:68px}.mring .mv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}" +
+    ".subnav{position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 0;overflow-x:auto;flex-wrap:nowrap}.subnav button{white-space:nowrap;min-height:44px}";
+  document.head.appendChild(st);
+})();
+// ---------- Ana local: responde sin internet con tus datos y una base de conocimiento ----------
+const nrm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+const NAME = () => (S.profile && S.profile.nombre) ? S.profile.nombre : "";
+function AC_ctx() {
+  const p = S.profile, menor = esMenor(p), t = calcTargets(p), k = todayKey(), d = getDay(k), tot = dayTotals(d);
+  return {p, menor, t, k, d, tot, n: NAME()};
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const SEG = ["Si estás en peligro ahora, llama al 131 (SAMU) o al 133 (Carabineros). En Chile también puedes llamar a la línea de prevención del suicidio *4141 o a Salud Responde, 600 360 7777."];
+const KB = [
+  {id: "crisis", pr: 100, k: [/suicid/, /quitarme la vida/, /no quiero vivir/, /hacerme dano/, /autolesion/, /cortarme/, /acabar con todo/], a: c => (c.n ? c.n + ", " : "") + "gracias por contármelo. Lo que sientes importa y no tienes que cargar con esto en soledad. Por favor habla ahora con alguien de confianza o con un profesional. " + SEG[0] + " Yo me quedo aquí contigo."},
+  {id: "ed", pr: 90, k: [/vomit/, /purg/, /atracon/, /me da asco mi cuerpo/, /me odio/, /dejar de comer/, /no quiero comer/, /castigarme con/, /compensar.*comi/, /me veo gord/], a: c => "Gracias por decírmelo, y no estás sin apoyo. Lo que cuentas merece cuidado de una persona profesional: un nutricionista o psicólogo que trabaje con la alimentación puede acompañarte sin juicio. Mientras tanto, no te saltes comidas ni te castigues con ejercicio. Si es posible, cuéntaselo hoy a alguien de confianza. Aquí sigo para lo que necesites."},
+  {id: "dolor", pr: 80, k: [/duele/, /dolor/, /lesion/, /mareo/, /desmayo/, /embaraz/, /cirugia/, /operacion/, /presion alta/, /corazon/, /me falta el aire/], a: c => "Si algo duele o te sientes mal, para por hoy. El cansancio de un entrenamiento es normal, pero el dolor, mareos o falta de aire no. Consulta con tu médico o un kinesiólogo antes de seguir, sobre todo si hay lesión, embarazo, cirugía reciente o algo del corazón o la presión. Cuando estés bien, retomamos suave."},
+  {id: "saludo", pr: 5, k: [/^hola/, /^buenas/, /^hey/, /que tal/, /^wena/], a: c => pick(["¡Hola" + (c.n ? ", " + c.n : "") + "! Qué bueno verte por aquí. ¿En qué te ayudo hoy: comida, entrenamiento o ánimo?", "¡Hola" + (c.n ? " " + c.n : "") + "! Cuéntame qué necesitas. Puedo ayudarte con ideas de comidas, técnica de ejercicios o con cómo seguir tu plan."]), f: ["¿Qué hago si me da flojera entrenar?", "¿Cuántas veces a la semana debería entrenar?"]},
+  {id: "gracias", pr: 5, k: [/gracias/, /buenisimo/, /genial/, /perfecto/, /super/], a: () => pick(["¡De nada! Lo estás haciendo muy bien. Un paso a la vez.", "Con gusto. Aquí estoy cuando me necesites."])},
+  {id: "flojera", pr: 20, k: [/flojera/, /desmotiv/, /sin ganas/, /no tengo ganas/, /pereza/, /me cuesta/, /motivacion/, /animo/, /cansad/, /no puedo/, /rendirme/, /me rindo/], a: c => "Es totalmente normal: a todo el mundo le pasa. No necesitas motivación, necesitas un paso pequeño. Prueba el plan mínimo: 1) un vaso de agua, 2) 5 minutos de movilidad, 3) si después quieres seguir, genial; si no, ya cumpliste. Los cambios reales toman semanas y meses, y cada día que apareces cuenta, aunque sea poquito.", f: ["Dame un plan mínimo", "¿Cuánto demoran los resultados?"]},
+  {id: "resultados", pr: 20, k: [/resultado/, /cuanto demora/, /cuanto tiempo/, /no bajo/, /estancad/, /plateau/, /no adelgazo/, /no veo cambio/, /cambio fisico/, /cuando voy a ver/], a: c => c.menor ? "Tu cuerpo está en etapa de crecimiento, así que lo importante no es verlo cambiar rápido sino sentirte con más energía, más fuerza y más técnica. Eso ya se nota en 3 o 4 semanas. Sigue con constancia, duerme bien y come variado." : "Tu cuerpo necesita tiempo, y eso es normal. Lo primero que mejora es la fuerza y la energía (2 a 4 semanas), después la técnica, y los cambios visibles suelen aparecer entre las 6 y las 12 semanas con constancia. El peso sube y baja de un día a otro; mira el promedio de 4 semanas, tus medidas y cómo te sientes. Ya estás construyendo el hábito, que es lo más difícil.", f: ["¿Cuántas veces a la semana debería entrenar?", "Dame un plan mínimo"]},
+  {id: "proteina", pr: 15, k: [/proteina/], a: c => c.menor ? "Las proteínas ayudan a crecer y recuperarte. Las encuentras en huevo, leche, yogur, queso, pollo, pescado, legumbres y carne. Intenta incluir una en cada comida." : "Tu meta es de unos " + fmt(c.t.prot) + " g al día" + (c.tot.p > 0 ? "; hoy llevas " + fmt(c.tot.p) + " g" : "") + ". Buenas fuentes: huevo, pollo, pavo, pescado, atún, legumbres, yogur griego, queso fresco. Repártelas en 3 o 4 comidas.", f: ["¿Qué ceno hoy para llegar a mi proteína?", "Dame una colación de unas 150 kcal"]},
+  {id: "agua", pr: 15, k: [/\bagua\b/, /hidrat/, /\bmate\b/, /infusion/, /\bte\b/, /cafe/, /tomar liquido/], a: c => "Tu meta de agua es de " + fmt(c.t.agua / 1000, 1) + " L al día" + (c.d.agua ? " y hoy llevas " + fmt(c.d.agua / 1000, 1) + " L" : "") + ". El mate, el té y las infusiones sin azúcar también cuentan. Un truco: deja una botella a la vista y toma un vaso al despertar y uno antes de cada comida."},
+  {id: "calorias", pr: 15, k: [/caloria/, /kcal/, /cuanto comer/, /deficit/], a: c => c.menor ? "En esta etapa no contamos calorías. Lo importante es comer variado, a tus horas, con proteína, frutas, verduras y cereales, y no saltarte comidas. Si te preocupa tu alimentación, habla con un adulto de confianza o un nutricionista." : "Tu meta estimada es de " + fmt(c.t.kcal) + " kcal al día, calculada con tu edad, estatura, peso y actividad. Es una guía, no una regla exacta. No bajes de 1200 kcal (mujeres) o 1500 (hombres) y no compenses un día alto saltándote comidas." + (c.tot.k ? " Hoy llevas " + fmt(c.tot.k) + " kcal." : ""), f: ["Arma un menú de un día para mi meta"]},
+  {id: "dieta", pr: 15, k: [/dieta/, /adelgazar/, /bajar de peso/, /bajar grasa/, /quemar grasa/, /bajar rapido/, /ayuno/, /keto/, /detox/], a: c => c.menor ? "Más que bajar de peso, a tu edad importa comer variado, dormir y moverte. No recomiendo dietas ni ayunos. Si algo de tu cuerpo te preocupa, cuéntaselo a un adulto de confianza o a un profesional de salud." : "Para bajar grasa de forma sana funciona lo simple: un pequeño déficit, proteína en cada comida, verduras, agua, fuerza y sueño. Las dietas extremas, los ayunos largos y los detox suelen rebotar. Mejor bajar de a poco, sostenible. Si tienes una condición de salud, vete con un nutricionista."},
+  {id: "colacion", pr: 25, k: [/colacion/, /snack/, /picoteo/, /merienda/], a: c => c.menor ? "Ideas de colación: una fruta, un yogur, un puñado de nueces, pan con queso o una barrita de cereal casera." : "Colaciones de unas 150 kcal: 1 yogur griego natural con una cucharada de avena; 1 manzana con 10 almendras; 2 huevos duros; 1 plátano; 1 pan integral con queso fresco; hummus con palitos de zanahoria.", f: ["¿Qué ceno hoy para llegar a mi proteína?"]},
+  {id: "comida", pr: 25, k: [/que ceno/, /que almuerzo/, /que desayuno/, /que como/, /que cocino/, /idea de comida/, /receta/, /once/, /cena/, /almuerzo/, /desayuno/], a: c => {
+      const m = /ceno|cena/.test(nrm(AC_last)) ? "cen" : /desayun/.test(nrm(AC_last)) ? "des" : /once/.test(nrm(AC_last)) ? "onc" : "alm";
+      const r = pickMeal(m, c.menor ? 0 : Math.max(300, c.t.kcal * ({des: .25, alm: .35, onc: .15, cen: .3}[m] || .3)), Math.floor(Math.random() * 5), c.menor).r, mm = recMacros(r);
+      return "Te propongo: " + r.n + " (" + r.min + " min)" + (c.menor ? "" : ", unas " + fmt(mm.k) + " kcal y " + fmt(mm.p) + " g de proteína por porción") + ". Ingredientes: " + r.ing.map(i => i[0].toLowerCase()).join(", ") + ". Encuentras los pasos en Comer → Recetas.";
+    }, f: ["Dame una colación de unas 150 kcal", "Arma un menú de un día para mi meta"]},
+  {id: "menu", pr: 30, k: [/menu/, /plan de comida/, /que comer hoy/], a: c => {
+      const used = [], sd = Math.floor(Math.random() * 5);
+      const parts = [["des", "Desayuno", .25], ["alm", "Almuerzo", .35], ["cen", "Cena", .3]].map(([m, nm, f], i) => { let r = pickMeal(m, c.menor ? 0 : c.t.kcal * f, sd + i * 2, c.menor).r, g = 0; while (used.includes(r.id) && g++ < 6) r = pickMeal(m, c.menor ? 0 : c.t.kcal * f, sd + i * 2 + g, c.menor).r; used.push(r.id); return nm + ": " + r.n; });
+      return "Un día posible: " + parts.join(" · ") + ". Suma agua durante el día y una fruta o colación si tienes hambre. Puedes cambiar cualquiera en Comer → Qué comer.";
+    }},
+  {id: "dominada", pr: 25, k: [/dominada/, /pull up/, /pullup/, /colgarme de la barra/], a: () => "Para llegar a tu primera dominada: 1) cuelgas de la barra 20 a 30 s, 2) escápulas en la barra (subir y bajar hombros), 3) remo invertido bajo una barra o mesa firme, 4) negativas: subes con ayuda y bajas en 4 o 5 segundos, 5) dominada asistida con banda. Hazlo 2 o 3 veces por semana. Suele tomar de 6 a 12 semanas, y es normal."},
+  {id: "flexion", pr: 25, k: [/flexion/, /lagartija/, /push up/, /pushup/], a: () => "Para mejorar tus flexiones: empieza con las manos en una superficie alta (mesa o banco), luego bájalas poco a poco hasta llegar al suelo, y después prueba con rodillas. Cuerpo recto, codos a 45 grados, baja en 2 segundos y sube en 1. Cuando hagas 12 a 15 bien hechas, pasa al siguiente nivel."},
+  {id: "postura", pr: 20, k: [/postura/, /encorvad/, /espalda/, /jorobad/], a: () => "Para mejorar tu postura: fortalece espalda alta y abdomen (remo invertido, superman, plancha), moviliza hombros y pecho, y haz pausas cada hora si estás sentada. Prueba la retracción escapular y la plancha en tu rutina."},
+  {id: "frecuencia", pr: 20, k: [/cuantas veces/, /cuantos dias/, /frecuencia/, /cada cuanto/, /descans/], a: c => "Al empezar, 2 o 3 días por semana con descanso entre ellos es lo ideal." + (c.p.dias ? " Tu plan es de " + c.p.dias + " días." : "") + " Los músculos mejoran mientras descansas, así que dormir y descansar es parte del entrenamiento. Si estás muy cansad" + (c.p.sexo === "m" ? "o" : "a") + ", haz movilidad suave o camina."},
+  {id: "calentar", pr: 20, k: [/calent/, /estirar/, /estiramiento/, /movilidad/], a: () => "Calienta 3 a 5 minutos antes de entrenar: muñecas, hombros, cadera y sentadillas suaves. Tienes una rutina de «Calentamiento y movilidad» en Entrenar. Estirar suave al terminar también ayuda a sentirte mejor."},
+  {id: "sueno", pr: 20, k: [/dormir/, /sueno/, /insomnio/, /desvelo/], a: c => "Dormir bien es parte del plan: " + (c.menor ? "8 a 10 horas" : "7 a 9 horas") + ", a horarios parecidos. Baja las pantallas 30 minutos antes, evita la cafeína en la tarde y deja la pieza oscura. Un buen sueño mejora tu energía, tu ánimo y tu recuperación."},
+  {id: "hoy", pr: 20, k: [/que toca/, /rutina de hoy/, /que entreno/, /entrenar hoy/, /que hago hoy/], a: c => { const r = todaysRoutine(); return r ? "Hoy toca " + r.name + " (" + r.min + " min). Puedes empezar desde Hoy con el botón grande. Si no tienes tiempo, haz la mitad: igual suma." : "Hoy es día de descanso. Puedes hacer 6 minutos de movilidad suave o salir a caminar."; }},
+  {id: "resumen", pr: 20, k: [/como voy/, /resumen/, /cuanto llevo/, /mi dia/, /mis datos/], a: c => "Hoy llevas " + fmt(c.d.agua / 1000, 1) + " L de agua y " + c.d.work.length + " entrenamiento(s)" + (c.menor ? "" : ", " + fmt(c.tot.k) + " de " + fmt(c.t.kcal) + " kcal") + (streak() > 1 ? ". Llevas una racha de " + streak() + " días. ¡Bien!" : ". Paso a paso, vas bien.")},
+  {id: "suplemento", pr: 20, k: [/creatina/, /suplement/, /pre entreno/, /quemador/, /proteina en polvo/, /whey/], a: c => c.menor ? "No recomiendo suplementos a tu edad. La comida variada, el agua y dormir bien son suficientes. Si tienes dudas, habla con un médico o nutricionista." : "Primero la comida: con una alimentación variada y proteína en cada comida normalmente no necesitas suplementos. Si quieres usar alguno, consúltalo con tu médico o nutricionista; yo no puedo indicar dosis."},
+  {id: "alcohol", pr: 15, k: [/alcohol/, /cerveza/, /piscola/, /vino/, /carrete/], a: c => c.menor ? "Mejor evitar el alcohol a tu edad. Si tienes dudas, habla con un adulto de confianza." : "El alcohol aporta calorías vacías y baja la recuperación y el sueño. Si lo tomas, que sea ocasional, con agua entre medio y comida. No te castigues: retoma tu plan al día siguiente."},
+  {id: "antojo", pr: 15, k: [/antojo/, /hambre/, /dulce/, /chocolate/, /comi de mas/, /me pase/], a: () => "Los antojos son normales. Prueba primero un vaso de agua y una fruta o yogur; si sigues con ganas, come un poco de lo que quieres, sin culpa, y sigue con tu día. Una comida no arruina nada; lo que cuenta es lo que haces casi siempre."},
+  {id: "habito", pr: 15, k: [/habito/, /constancia/, /disciplina/, /racha/, /rutina diaria/], a: () => "La disciplina se construye con hábitos pequeños: mismo horario, poco esfuerzo al principio y celebrar cada avance. Usa los 3 hábitos de Hoy (agua, verdura, moverte) y no rompas la cadena dos días seguidos. Si fallas uno, no pasa nada: retomas al siguiente."},
+  {id: "nivel", pr: 15, k: [/subir de nivel/, /cambiar de nivel/, /avanzado/, /principiante/, /progresion/, /test de nivel/], a: () => "En Entrenar → Mi plan puedes hacer el test de nivel o cambiar tu nivel. Sube de nivel cuando completes tus rutinas con buena técnica y sientas que te quedan repeticiones de sobra."},
+  {id: "app", pr: 12, k: [/como uso/, /como funciona/, /instalar/, /respaldo/, /reloj/, /pulso/, /cronometro/, /temporizador/, /mis rutinas/, /donde esta/], a: () => "Resumen rápido: en Hoy empiezas tu entrenamiento y ves tu progreso del día; en Entrenar tienes tu plan, rutinas, calendario, y «Mis rutinas» con cronómetro; en Comer registras comidas y ves recetas; en Progreso están tu peso, logros, reloj y respaldo. Si quieres que te guíe en algo, dime qué."}
+];
+let AC_last = "";
+const EXN = () => Object.keys(EX).map(id => [id, nrm(EX[id].n)]);
+function exLookup(q) {
+  const asks = /como (hago|se hace|hacer)|tecnica|paso|bien hecho|ensename|explica/.test(q);
+  if (!asks && q.split(" ").length > 5) return null;
+  let best = null;
+  EXN().forEach(([id, n]) => { const words = n.split(" ").filter(w => w.length > 3); const hit = n && q.indexOf(n) >= 0 ? 10 + n.length : words.length && words.every(w => q.indexOf(w) >= 0) ? 5 + n.length : 0; if (hit && (!best || hit > best.h)) best = {id, h: hit}; });
+  return best && TECH[best.id] ? best.id : null;
+}
+function localAna(msg) {
+  const c = AC_ctx(), q = nrm(msg); AC_last = msg;
+  let best = null;
+  KB.forEach(e => { const n = e.k.filter(r => r.test(q)).length; if (n) { const sc = e.pr * 10 + n; if (!best || sc > best.sc) best = {e, sc}; } });
+  if (!best || best.e.pr < 40) { const id = exLookup(q); if (id && (!best || best.e.pr < 40)) { const t = TECH[id]; return {text: EX[id].n + ": " + t.pasos.map((x, i) => (i + 1) + ") " + x).join(" ") + " Evita: " + t.err + ". Ritmo: " + t.ritmo, f: ["¿Cuántas veces a la semana debería entrenar?", "¿Cómo mejoro mi postura?"]}; } }
+  if (best) { let tx = ""; try { tx = best.e.a(c); } catch (e) { tx = ""; } if (tx) return {text: tx, f: best.e.f || null}; }
+  return {text: (c.n ? c.n + ", " : "") + "no estoy segura de haberte entendido. Puedo ayudarte con ideas de comidas, qué cenar, técnica de ejercicios (por ejemplo «¿cómo hago una sentadilla?»), cuántas veces entrenar, ánimo, sueño y cómo seguir tu plan. ¿Me lo cuentas de otra forma?", f: c.menor ? SUGG_J.slice(0, 3) : SUGG.slice(0, 3)};
+}
+const _sendLocalBase = ACT.send;
+ACT.send = async () => {
+  const sm = await SAMPLE_P;
+  if (sm) return _sendLocalBase();
+  const inp = $("#a-in"), msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = ""; CHAT.push({role: "user", content: msg}); addBubble("me", msg);
+  const bub = addBubble("ana", "Escribiendo…");
+  await new Promise(r => setTimeout(r, 450));
+  const a = localAna(msg);
+  bub.textContent = a.text; CHAT.push({role: "assistant", content: a.text});
+  if (a.f && a.f.length) { const w = document.createElement("div"); w.className = "seg"; w.innerHTML = a.f.map(q => '<button data-act="ask" data-q="' + esc(q) + '">' + esc(q) + "</button>").join(""); $("#chat").appendChild(w); }
+  bub.scrollIntoView({block: "nearest"});
+};
+// Sin IA externa, el chat nunca se deshabilita
+const _anaLocal = RENDER.ana;
+RENDER.ana = () => _anaLocal().replace(/ disabled/g, "").replace("El chat no está disponible en esta vista. Los consejos de arriba siguen funcionando con tus datos.", "");
+// Preguntas sugeridas que la Ana local entiende
+SUGG[1] = "Dame una colación de unas 150 kcal";
+// ---------- Disciplinas: Yoga, Pilates y movilidad (y base para las siguientes) ----------
+// id | nombre | t (t = tiempo, r = repeticiones) | pista | pasos (;) | errores | ritmo y respiración | dibujo
+const DISC_RAW = `y_mountain|Postura de la montaña (Tadasana)|t|Pies firmes, columna larga, respira lento.|Párate con los pies paralelos a la altura de la cadera;Reparte el peso por toda la planta del pie y activa los muslos;Alarga la columna, hombros relajados hacia abajo y mira al frente|Bloquear las rodillas o echar el pecho hacia adelante|Respira por la nariz: inhala 4 y exhala 4 segundos.|y_mtn
+y_fold|Flexión hacia adelante de pie (Uttanasana)|t|Dobla desde la cadera y deja caer la cabeza.|Parte de pie y sube los brazos al inhalar;Exhala y baja doblando desde la cadera con la espalda larga;Flexiona las rodillas lo necesario y deja colgar cabeza y brazos|Forzar el estiramiento con piernas rígidas o redondear de golpe|Exhala al bajar. Suelta un poco más en cada exhalación.|y_fold
+y_dog|Perro boca abajo (Adho Mukha Svanasana)|t|Cadera alta, talones hacia el suelo, espalda larga.|Parte en cuatro apoyos con las manos al ancho de los hombros;Mete los dedos de los pies y sube la cadera hacia el techo formando una V invertida;Estira la espalda, empuja el suelo con las manos y lleva los talones hacia abajo sin forzar|Redondear la espalda o cargar todo en las muñecas|Respira lento. Si tira atrás de los muslos, dobla un poco las rodillas.|pike
+y_cobra|Cobra suave (Bhujangasana)|t|Pecho arriba, hombros lejos de las orejas.|Acuéstate boca abajo con las manos bajo los hombros y los codos pegados;Al inhalar levanta el pecho usando la espalda; las piernas quedan apoyadas;Mantén el cuello largo y los hombros hacia abajo|Empujar demasiado con los brazos o apretar la zona lumbar|Inhala al subir y respira normal arriba. Baja exhalando.|y_cobra
+y_child|Postura del niño (Balasana)|t|Descansa la frente y respira hacia la espalda.|Siéntate sobre los talones con las rodillas separadas;Estira los brazos al frente y apoya la frente en el suelo;Deja que el peso del cuerpo se suelte con cada exhalación|Forzar si duelen las rodillas (pon una manta bajo ellas)|Respira profundo hacia la espalda. Es una postura de descanso.|y_child
+y_war1|Guerrero I (Virabhadrasana I)|t|Rodilla delantera sobre el tobillo, brazos arriba.|Da un paso largo atrás y dobla la rodilla delantera sobre el tobillo;Gira el pie de atrás un poco hacia afuera y apóyalo firme;Sube los brazos y alarga la columna. Después cambia de lado|Pasar la rodilla delantera del pie o arquear la zona lumbar|Respira lento. Mismo tiempo de cada lado.|y_war1
+y_war2|Guerrero II (Virabhadrasana II)|t|Brazos largos, mirada sobre la mano delantera.|Abre las piernas: pie delantero al frente y el de atrás de lado;Dobla la rodilla delantera sobre el tobillo;Extiende los brazos al nivel de los hombros y mira sobre la mano delantera. Cambia de lado|Dejar caer la rodilla hacia adentro o inclinar el torso|Respira lento y parejo. Mismo tiempo de cada lado.|y_war2
+y_chair|Silla (Utkatasana)|t|Siéntate hacia atrás, pecho abierto, brazos arriba.|Párate con los pies juntos o al ancho de la cadera;Dobla las rodillas llevando la cadera atrás como para sentarte;Sube los brazos junto a las orejas y mantén el pecho abierto|Rodillas pasando mucho las puntas o arquear la espalda|Respira lento. Si cansa mucho, sube un poco.|y_chair
+y_tree|Árbol (Vrksasana)|t|Apoya el pie en la pantorrilla o el muslo, nunca en la rodilla.|Párate firme sobre una pierna y apoya la otra planta en la pantorrilla o el muslo, nunca en la rodilla;Junta las palmas al pecho o sube los brazos;Fija la mirada en un punto y respira. Cambia de lado|Apoyar el pie en la rodilla o ir muy rápido|Respira lento. Si te cuesta el equilibrio, apoya una mano en la pared.|y_tree
+y_bridge|Puente (Setu Bandhasana)|t|Empuja con los pies y sube la cadera.|Acuéstate boca arriba con las rodillas dobladas y los pies bajo ellas;Empuja con los pies y sube la cadera hasta formar una línea recta;Aprieta los glúteos y mantén el cuello relajado|Abrir mucho las rodillas o apretar el cuello|Respira lento arriba. Baja despacio, vértebra por vértebra.|bridge
+y_twist|Torsión sentada|t|Columna larga, gira desde el abdomen.|Siéntate con las piernas estiradas o cruzadas y la columna larga;Al exhalar, gira el torso hacia un lado apoyando las manos;Alarga la columna al inhalar y gira un poco más al exhalar. Cambia de lado|Girar solo los hombros o encorvarte|Inhala para alargar, exhala para girar. Mismo tiempo de cada lado.|y_sit
+y_butterfly|Mariposa (Baddha Konasana)|t|Plantas juntas, rodillas relajadas.|Siéntate con las plantas de los pies juntas y las rodillas hacia los lados;Alarga la columna y, si puedes, inclínate suave hacia adelante;Deja caer las rodillas sin empujarlas|Empujar las rodillas con las manos o encorvar la espalda|Respira lento. Sin dolor en caderas ni rodillas.|y_butterfly
+y_happy|Bebé feliz (Ananda Balasana)|t|Rodillas hacia las axilas, espalda baja en el suelo.|Acuéstate boca arriba y lleva las rodillas hacia el pecho;Toma la parte exterior de los pies o las pantorrillas y abre las rodillas hacia las axilas;Deja la espalda baja apoyada y mece suave de lado a lado|Levantar la cabeza o tirar con fuerza de los pies|Respira lento y suelta la cadera.|y_happy
+y_legsup|Piernas en la pared (Viparita Karani)|t|Relájate, deja que la pared sostenga tus piernas.|Siéntate de lado junto a una pared y gira para subir las piernas apoyadas en ella;Acuéstate de espaldas con los brazos a los lados y la cadera cerca de la pared;Cierra los ojos y respira lento|Quedar con la cadera muy lejos de la pared, o forzar si hay mareo|Exhalaciones más largas que las inhalaciones. Sal de lado, despacio.|y_legsup
+y_savasana|Savasana (relajación final)|t|Suelta todo el cuerpo y respira normal.|Acuéstate boca arriba con las piernas relajadas y los brazos a los lados, palmas arriba;Cierra los ojos y relaja cara, mandíbula y hombros;Respira natural, sin controlar, y suelta la tensión|Ponerte a pensar en tareas o mirar el celular|Respiración natural. Al terminar, mueve dedos y gira de lado antes de sentarte.|y_savasana
+y_boat|Barca (Navasana)|t|Pecho abierto, mira tus pies.|Siéntate con las rodillas dobladas y los pies en el suelo;Inclínate un poco atrás con la espalda larga y sube los pies, brazos al frente;Si puedes, estira las piernas. Mantén el abdomen firme|Encorvar la espalda baja|Respira corto. Para si molesta la espalda.|y_boat
+y_lowlunge|Zancada baja (Anjaneyasana)|t|Cadera hacia adelante y abajo, brazos arriba.|Desde cuatro apoyos lleva un pie adelante entre las manos;Baja la cadera hacia adelante y abajo sin pasar la rodilla del tobillo;Sube los brazos y alarga la columna. Cambia de lado|Arquear mucho la espalda baja|Respira lento. Mismo tiempo de cada lado.|y_lowlunge
+y_warr3|Guerrero III (Virabhadrasana III)|t|Cuerpo en T hacia adelante, pierna atrás firme.|Párate en una pierna y lleva el torso hacia adelante;Estira la otra pierna atrás hasta quedar en línea, con los brazos al frente;Mira al suelo y mantén la cadera nivelada. Cambia de lado|Abrir la cadera hacia un lado o perder el equilibrio sin apoyo|Respira corto. Apóyate en una pared si lo necesitas.|y_warr3
+y_sun|Saludo al sol (una vuelta)|r|Fluye con la respiración: un movimiento por respiración.|De pie, inhala y sube los brazos;Exhala y baja a la flexión adelante; inhala y alarga la espalda;Exhala, lleva los pies atrás a plancha, baja y sube a cobra;Exhala al perro boca abajo, respira y vuelve a ponerte de pie|Ir rápido sin respirar o forzar la espalda en la cobra|Un movimiento por respiración. Haz lo que puedas con calma.|y_sunf
+p_hundred|El cien (Hundred)|t|Brazos bombeando, abdomen firme.|Acuéstate boca arriba con las rodillas en mesa (90 grados) y levanta cabeza y hombros;Estira los brazos junto al cuerpo y bombea de arriba a abajo;Inhala 5 bombeos y exhala 5 bombeos. Si te molesta el cuello, deja la cabeza apoyada|Tirar del cuello o arquear la espalda baja|Inhala 5 conteos, exhala 5 conteos.|p_hundred
+p_rollup|Rodar hacia arriba (Roll-up)|r|Sube vértebra por vértebra y baja lento.|Acuéstate con las piernas estiradas y los brazos sobre la cabeza;Al exhalar, sube enrollando la columna hasta alcanzar los pies;Inhala arriba y baja lento vértebra por vértebra. Si cuesta, dobla las rodillas|Subir de golpe con impulso|Exhala al subir, inhala arriba, exhala al bajar.|p_rollup
+p_singleleg|Estiramiento de una pierna|r|Alterna rodillas, espalda baja pegada al suelo.|Acuéstate boca arriba con una rodilla al pecho y la otra pierna estirada a 45 grados;Levanta cabeza y hombros, una mano en la rodilla y otra en el tobillo;Cambia de pierna con control|Perder el apoyo de la espalda baja|Inhala 2 cambios, exhala 2 cambios. Ritmo constante.|p_singleleg
+p_scissors|Tijeras (Scissors)|r|Piernas largas, cambia sin balancear.|Acuéstate boca arriba con ambas piernas arriba y la cabeza apoyada;Baja una pierna mientras la otra se mantiene arriba y alterna;Mantén la espalda baja pegada al suelo|Bajar tanto las piernas que se arquee la espalda|Exhala al cambiar de pierna. Si cuesta, flexiona las rodillas.|p_scissors
+p_swim|Natación (Swimming)|t|Brazo y pierna contrarios, alarga.|Acuéstate boca abajo con los brazos al frente y las piernas estiradas;Levanta brazos y piernas unos centímetros y alterna brazo derecho con pierna izquierda;Mantén el cuello largo y el abdomen firme|Levantar demasiado el cuello|Respira natural al ritmo del movimiento.|p_swimf
+p_spinestretch|Estiramiento de columna sentada|r|Redondea como una C y vuelve alargando.|Siéntate con las piernas estiradas y los brazos al frente;Exhala y redondea la columna hacia adelante como una C;Inhala y vuelve alargando la espalda|Dejar caer los hombros hacia las orejas|Exhala al bajar, inhala al subir.|p_spine
+p_hipcircle|Círculos de cadera de pie|r|Rodilla alta, círculos amplios y lentos.|Párate junto a una pared y apoya una mano;Levanta una rodilla y dibuja círculos grandes con la cadera;Cambia de dirección y de pierna|Mover la espalda en vez de la cadera|Lento y controlado. Respira normal.|p_hipc
+m_thoracic|Rotación de columna en cuatro apoyos|r|Mano en la nuca, abre el codo al techo.|Apóyate en manos y rodillas y lleva una mano a la nuca;Gira abriendo el codo hacia el techo siguiendo con la mirada;Vuelve y repite. Cambia de lado|Mover la zona lumbar en vez del pecho|Exhala al abrir. Lento.|catcow
+m_hipflexor|Estiramiento de flexor de cadera|t|Cadera adelante, abdomen firme.|Arrodíllate en una pierna con el otro pie adelante, ambos a 90 grados;Aprieta el glúteo de atrás y lleva la cadera hacia adelante;Sube los brazos si puedes. Cambia de lado|Arquear la espalda baja|Respira lento. Sientes el estiramiento en la parte delantera de la cadera.|y_lowlunge
+m_hamstring|Estiramiento de isquios sentada|t|Espalda larga, inclínate desde la cadera.|Siéntate con una pierna estirada y la otra doblada;Alarga la columna e inclínate desde la cadera hacia el pie estirado;Mantén el pie relajado. Cambia de pierna|Encorvar la espalda para llegar más lejos|Exhala al inclinar. Sin dolor, solo tensión suave.|p_spine
+m_figure4|Figura 4 (glúteo y cadera)|t|Tobillo sobre la rodilla contraria, tira suave.|Acuéstate boca arriba con las rodillas dobladas;Cruza un tobillo sobre la rodilla contraria formando un 4;Toma el muslo de abajo y acércalo al pecho. Cambia de lado|Empujar la rodilla con fuerza|Respira lento. Sientes estiramiento en el glúteo.|y_happy
+m_neck|Estiramiento suave de cuello|t|Inclina la oreja al hombro sin tirar.|Siéntate o párate con la espalda recta y los hombros relajados;Inclina suave la oreja hacia el hombro;Deja caer el hombro contrario. Cambia de lado, sin tirar con la mano|Subir el hombro o forzar el cuello|Respira lento. Si hay dolor o mareo, para.|m_neck
+m_chest|Apertura de pecho en la pared|t|Brazo en la pared, gira el cuerpo lejos.|Apoya la mano y el antebrazo en una pared a la altura del hombro;Gira el cuerpo hacia el lado contrario hasta sentir que el pecho se abre;Mantén el hombro relajado. Cambia de lado|Subir el hombro o forzar el giro|Respira lento. Estiramiento suave, no dolor.|m_chest
+m_ankle|Movilidad de tobillo en la pared|r|Rodilla hacia la pared sin levantar el talón.|Párate frente a una pared con un pie adelantado;Lleva la rodilla hacia la pared sin levantar el talón;Vuelve y repite. Cambia de pie|Despegar el talón|Lento. Una repetición por exhalación.|m_ankle`;
+// Dibujos simples (vista lateral, mira a la derecha)
+Object.assign(POSE, {
+  y_mtn: [{t: -90, a: [95, 95], l: [90, 90]}, {t: -90, a: [-90, -90], l: [90, 90]}],
+  y_sunf: [{t: -90, a: [-90, -90], l: [90, 90]}, {t: 20, a: [90, 90], l: [90, 90]}, {t: -45, a: [90, 90], l: [90, 90]}, {t: -62, a: [90, 90], l: [180, 180]}],
+  p_swimf: [{t: 180, a: [175, 175], l: [0, 0]}, {t: 180, a: [-155, -155], l: [-20, -20]}],
+  y_fold: [{t: -90, a: [-90, -90], l: [90, 90]}, {t: 20, a: [90, 90], l: [90, 90]}],
+  y_cobra: [{t: -62, a: [90, 90], l: [180, 180], nofar: true}],
+  y_child: [{t: 12, a: [0, 0], l: [0, 180], nofar: true}],
+  y_war1: [{t: -90, a: [-90, -90], l: [10, 90], fl: [110, 110]}],
+  y_war2: [{t: -90, a: [0, 0], fa: [180, 180], l: [10, 90], fl: [110, 110]}],
+  y_chair: [{t: -62, a: [-35, -35], l: [10, 95]}],
+  y_tree: [{t: -90, a: [-90, -90], l: [90, 90], fl: [15, 160]}],
+  y_sit: [{t: -90, a: [0, 20], l: [0, 0]}],
+  y_butterfly: [{t: -85, a: [60, 100], l: [-40, 165]}, {t: -70, a: [60, 100], l: [-30, 165]}],
+  y_happy: [{t: 180, a: [-70, -100], l: [-75, -120], fl: [-80, -125]}],
+  y_legsup: [{t: 180, a: [0, 0], l: [-90, -90], wall: "R"}],
+  y_savasana: [{t: 180, a: [25, 25], l: [0, 0], nofar: true}, {t: 178, a: [28, 28], l: [3, 3], nofar: true}],
+  y_boat: [{t: -120, a: [0, 0], l: [-40, -40]}],
+  y_lowlunge: [{t: -90, a: [-90, -90], l: [0, 90], fl: [140, 180]}],
+  y_warr3: [{t: 0, a: [0, 0], l: [90, 90], fl: [180, 180]}],
+  p_hundred: [{t: 170, a: [10, 10], l: [-45, -45], hd: 160}],
+  p_rollup: [{t: 180, a: [180, 180], l: [0, 0]}, {t: -30, a: [0, 0], l: [0, 0]}],
+  p_singleleg: [{t: 170, a: [-30, -20], l: [-75, -140], fl: [-40, -40], hd: 160}],
+  p_scissors: [{t: 170, a: [-40, -60], l: [-80, -80], fl: [-35, -35], hd: 160}],
+  p_spine: [{t: -90, a: [0, 0], l: [0, 0]}, {t: -20, a: [0, 0], l: [0, 0]}],
+  p_hipc: [{t: -90, a: [90, 90], l: [90, 90], fl: [20, 100]}],
+  m_neck: [{t: -90, a: [90, 90], l: [90, 90], hd: -60}],
+  m_chest: [{t: -90, a: [-20, -90], l: [90, 90], wall: "R"}],
+  m_ankle: [{t: -82, a: [0, 0], l: [20, 90], fl: [100, 100], wall: "R"}]
+});
+(function () {
+  DISC_RAW.split("\n").forEach(l => {
+    const p = l.split("|"); if (p.length < 8) return;
+    EX[p[0]] = {n: p[1], t: p[2], cue: p[3]};
+    TECH[p[0]] = {pasos: p[4].split(";"), err: p[5], ritmo: p[6]};
+    DRAW[p[0]] = p[7];
+  });
+})();
+const DISC = {
+  cal: {n: "Calistenia", intro: ""},
+  yoga: {n: "Yoga", intro: "Posturas y respiración para ganar flexibilidad, equilibrio y calma. Ve a tu ritmo: ninguna postura debe doler.", tips: ["Respira por la nariz y no aguantes el aire.", "Entra y sal de las posturas despacio; nada de rebotes.", "Si una postura te marea o te duele, sal y descansa en la postura del niño.", "Mejor poca amplitud con buena técnica que llegar más lejos mal."]},
+  pil: {n: "Pilates y movilidad", intro: "Core, postura y movilidad de articulaciones. Pocos movimientos, hechos con control y respiración.", tips: ["Mantén la espalda baja apoyada en los ejercicios acostada.", "El movimiento sale del abdomen, no del impulso.", "Si te molesta el cuello, deja la cabeza apoyada.", "Estira con tensión suave, nunca con dolor."]}
+};
+ROUTINES.push(
+  {id: "yg1", disc: "yoga", teen: true, name: "Yoga suave para empezar", nivel: "Principiante", min: 15, met: 2.5, desc: "Respiración y posturas básicas, sin esfuerzo.", blocks: [["catcow", 1, 40, 10], ["y_child", 1, 40, 10], ["y_dog", 2, 30, 15], ["y_cobra", 2, 25, 15], ["y_fold", 2, 30, 10], ["y_mountain", 1, 30, 10], ["y_savasana", 1, 60, 0]]},
+  {id: "yg2", disc: "yoga", teen: false, name: "Yoga de fuerza y equilibrio", nivel: "Intermedio", min: 25, met: 3, desc: "Saludo al sol, guerreros, silla y árbol.", blocks: [["y_sun", 3, 1, 15], ["y_war1", 2, 30, 10], ["y_war2", 2, 30, 10], ["y_chair", 2, 30, 15], ["y_tree", 2, 30, 10], ["y_warr3", 2, 20, 10], ["y_boat", 2, 20, 15], ["y_savasana", 1, 60, 0]]},
+  {id: "yg3", disc: "yoga", teen: true, name: "Yoga para dormir", nivel: "Principiante", min: 15, met: 2, desc: "Posturas suaves de suelo para relajarte antes de dormir.", blocks: [["y_child", 1, 45, 10], ["y_butterfly", 1, 45, 10], ["y_twist", 2, 30, 10], ["y_happy", 1, 45, 10], ["y_legsup", 1, 90, 10], ["y_savasana", 1, 90, 0]]},
+  {id: "yg4", disc: "yoga", teen: true, name: "Yoga energizante de mañana", nivel: "Principiante", min: 12, met: 3, desc: "Despierta el cuerpo con un saludo al sol suave y una zancada.", blocks: [["y_mountain", 1, 20, 5], ["y_sun", 2, 1, 15], ["y_lowlunge", 2, 25, 10], ["y_chair", 1, 25, 10], ["y_fold", 1, 30, 10]]},
+  {id: "pl1", disc: "pil", teen: true, name: "Pilates de core", nivel: "Principiante", min: 15, met: 3, desc: "Abdomen firme con control y respiración.", blocks: [["p_hundred", 2, 30, 20], ["p_rollup", 2, 8, 20], ["p_singleleg", 2, 10, 20], ["p_scissors", 2, 10, 20], ["p_swim", 2, 25, 20]]},
+  {id: "pl2", disc: "pil", teen: false, name: "Core y postura", nivel: "Intermedio", min: 22, met: 3.2, desc: "Un poco más de exigencia para abdomen, espalda y glúteos.", blocks: [["p_hundred", 3, 40, 20], ["p_rollup", 3, 10, 20], ["p_singleleg", 3, 12, 20], ["p_scissors", 3, 12, 20], ["birddog", 3, 10, 20], ["y_bridge", 2, 30, 15], ["p_swim", 3, 30, 20]]},
+  {id: "mv1", disc: "pil", teen: true, name: "Movilidad de cadera y espalda", nivel: "Principiante", min: 12, met: 2.3, desc: "Suelta caderas y columna, ideal si pasas mucho tiempo sentado.", blocks: [["catcow", 1, 40, 10], ["m_thoracic", 2, 8, 10], ["p_hipcircle", 2, 8, 10], ["m_hipflexor", 2, 30, 10], ["m_figure4", 2, 30, 10], ["y_child", 1, 40, 0]]},
+  {id: "mv2", disc: "pil", teen: true, name: "Estirar después de entrenar", nivel: "Principiante", min: 10, met: 2, desc: "Estiramientos suaves para recuperar.", blocks: [["m_hamstring", 2, 30, 10], ["m_hipflexor", 2, 30, 10], ["m_chest", 2, 30, 10], ["m_neck", 2, 20, 10], ["y_child", 1, 40, 0]]},
+  {id: "mv3", disc: "pil", teen: true, name: "Pausa de oficina o estudio", nivel: "Principiante", min: 8, met: 2, desc: "Cuello, hombros, pecho y tobillos para soltar la tensión.", blocks: [["m_neck", 2, 20, 8], ["m_chest", 2, 25, 8], ["shoulder", 1, 30, 8], ["m_ankle", 2, 8, 8], ["y_mountain", 1, 30, 0]]}
+);
+// Permitir rutinas suaves a menores en el calendario y en "Mis rutinas"
+{
+  let sp = p => p;
+  const cf = typeof calHTML === "function" ? calHTML : null;
+}
+// ----- Interfaz: disciplinas dentro de Entrenar -----
+VIEW.disc = "cal"; VIEW.dlv = "todos";
+const DISC_LIST = [["cal", "Calistenia"], ["yoga", "Yoga"], ["pil", "Pilates y movilidad"]];
+const discChips = () => '<div class="seg subnav discs" role="group" aria-label="Disciplina">' + DISC_LIST.map(([v, l]) => '<button type="button" data-act="disc" data-v="' + v + '" aria-pressed="' + (VIEW.disc === v) + '">' + l + "</button>").join("") + "</div>";
+ACT.disc = b => { VIEW.disc = b.dataset.v; render(); window.scrollTo(0, 0); };
+ACT.dlv = b => { VIEW.dlv = b.dataset.v; render(); };
+function discView() {
+  const d = DISC[VIEW.disc], menor = esMenor(S.profile);
+  const all = ROUTINES.filter(r => r.disc === VIEW.disc && (!menor || r.teen));
+  const lvls = ["todos"].concat(Array.from(new Set(all.map(r => r.nivel))));
+  const list = all.filter(r => VIEW.dlv === "todos" || r.nivel === VIEW.dlv);
+  return '<div class="card stack s8"><div class="cta-t" style="color:var(--ink)">' + d.n + '</div><p class="small muted">' + esc(d.intro) + "</p></div>" +
+    (lvls.length > 2 ? '<div class="seg" role="group">' + lvls.map(v => '<button type="button" data-act="dlv" data-v="' + v + '" aria-pressed="' + (VIEW.dlv === v) + '">' + (v === "todos" ? "Todos" : v) + "</button>").join("") + "</div>" : "") +
+    (list.length ? "" : '<div class="card"><p class="small muted">Por ahora no hay rutinas de esta disciplina para tu perfil.</p></div>') + list.map(r => '<div class="card stack s8"><div class="row between"><h4>' + esc(r.name) + '</h4><span class="chip">' + r.min + ' min</span></div><span class="small muted">' + esc(r.nivel) + " · " + r.blocks.length + ' ejercicios</span><p class="small">' + esc(r.desc) + "</p>" +
+      '<div class="row wrap"><button class="btn primary sm" data-act="start" data-id="' + r.id + '">Empezar guiada</button><button class="btn sm" data-act="verrutina" data-id="' + r.id + '">Ver ejercicios</button></div></div>').join("") +
+    '<div class="card stack s8"><h3>Consejos del experto</h3>' + d.tips.map(x => '<p class="small">• ' + esc(x) + "</p>").join("") + '<p class="note">Esta app te guía en solitario. Si tienes lesiones, embarazo o una condición de salud, consulta a un profesional antes de empezar.</p></div>';
+}
+const _entrenarDisc = RENDER.entrenar;
+RENDER.entrenar = () => {
+  const h = _entrenarDisc();
+  if (VIEW.disc === "cal") return h.replace('<div class="seg subnav"', discChips() + '<div class="seg subnav"');
+  const i = h.indexOf("</div>", h.indexOf("<h1>")) + 6;
+  return '<div class="stack">' + h.slice(h.indexOf('<div class="stack">') + 19, i) + discChips() + discView() + "</div>";
+};
+// ---------- Boxeo y Muay Thai / kickboxing (solo sombra y saco; sin sparring) ----------
+const BOX_RAW = `b_stance|Guardia y postura base|t|Pies al ancho de hombros, puños arriba, mentón abajo.|Separa los pies al ancho de los hombros, el pie contrario a tu mano fuerte adelante;Flexiona un poco las rodillas y apoya el peso en la parte delantera de los pies;Sube los puños a la altura de las mejillas, codos pegados y mentón hacia el pecho|Bajar las manos, pararte con las piernas rígidas o cruzar los pies|Respira normal por la nariz. Muévete suave sobre las puntas de los pies.|b_guard
+b_foot|Desplazamientos (adelante, atrás, lados)|t|Mueve primero el pie más cercano a donde vas.|Desde la guardia, mueve primero el pie del lado hacia donde vas;Luego acerca el otro pie para volver a la base sin cruzarlos;Mantén las manos arriba y el peso repartido|Cruzar los pies, dar saltos grandes o juntar los pies|Pasos cortos y fluidos. Respira normal.|b_guard
+b_jab|Jab (directo adelantado)|r|Estira el brazo de adelante y vuelve rápido.|Desde la guardia, lanza el puño adelantado recto hacia el frente girando un poco el hombro;Termina con el puño en horizontal y el hombro protegiendo el mentón;Vuelve rápido a la guardia por el mismo camino|Bajar la otra mano, estirar el cuerpo hacia adelante o dejar el brazo extendido|Exhala corto al golpear (tss). Rápido y relajado, aprieta el puño solo al impactar.|b_jab
+b_cross|Cross (directo atrasado)|r|El giro viene de la cadera y el pie de atrás.|Desde la guardia, gira el talón y la cadera de atrás hacia adelante;Lanza el puño de atrás recto sobre la línea del centro;Gira el hombro y vuelve a la guardia, con la otra mano protegiendo|Golpear solo con el brazo sin girar, o inclinarte demasiado|Exhala al golpear. Gira el cuerpo como una puerta.|b_cross
+b_hook|Gancho (hook)|r|Codo alto, giro de cuerpo, puño de lado.|Desde la guardia, gira el pie y la cadera del lado del golpe;Lleva el puño en arco corto con el codo a la altura del hombro;Termina sin pasar la línea del centro y vuelve a la guardia|Abrir demasiado el brazo o bajar el codo|Exhala al golpear. El giro del cuerpo da la fuerza.|b_hook
+b_upper|Uppercut (gancho al mentón)|r|Flexiona las rodillas y sube con el puño hacia arriba.|Desde la guardia, flexiona un poco las rodillas y baja el hombro del lado del golpe;Sube el puño desde abajo hacia arriba, palma hacia ti, pegado al cuerpo;Vuelve a la guardia protegiendo el mentón|Bajar mucho el brazo antes de golpear|Exhala al subir. Golpe corto, sin balanceo.|b_upper
+b_slip|Esquiva (slip) y rotación|r|Mueve la cabeza hacia un lado y vuelve al centro.|Desde la guardia, flexiona las rodillas y mueve la cabeza unos centímetros hacia un lado;Mantén los ojos al frente y las manos arriba;Vuelve al centro y repite hacia el otro lado|Inclinar el torso hacia adelante o mirar al suelo|Exhala al esquivar. Movimiento corto.|b_guard
+b_12|Combinación 1-2 (jab y cross)|r|Jab recto y cross, uno detrás del otro.|Desde la guardia lanza el jab;Sin esperar, lanza el cross girando la cadera;Vuelve a la guardia con las manos arriba|Mover los pies sin control o bajar las manos al terminar|Exhala dos veces, una por golpe. Ritmo parejo.|b_cross
+b_123|Combinación 1-2-3 (jab, cross, gancho)|r|Termina con un gancho corto y vuelve a la guardia.|Lanza jab y cross;Gira el cuerpo y lanza el gancho con el brazo adelantado;Vuelve a la guardia y empieza de nuevo|Perder el equilibrio al girar|Exhala en cada golpe. Control antes que fuerza.|b_hook
+b_shadow|Sombra de boxeo (shadowboxing)|t|Imagina un rival, mueve los pies y combina golpes.|Párate en guardia y muévete por el espacio;Lanza golpes sueltos y combinaciones, mezclando esquivas;Mantén las manos arriba entre cada golpe|Quedarte quieta o golpear sin mover las piernas|Respira normal. Ritmo constante, sin fuerza máxima.|b_jab
+b_bag|Golpes al saco (jab y cross)|t|Golpea con el puño bien cerrado, muñeca recta.|Usa guantes y vendas. Párate a un brazo de distancia del saco;Lanza jab y cross con la muñeca recta, golpeando con los nudillos grandes;Muévete alrededor del saco sin cruzar los pies|Golpear sin vendas o guantes, o con la muñeca doblada|Exhala en cada golpe. Si duele la muñeca, para.|b_cross
+m_stance|Guardia de muay thai|t|Peso repartido, manos altas, listas para patear.|Separa los pies un poco más que en boxeo, con el peso repartido;Lleva los puños a la altura de la cara y los codos protegiendo las costillas;Mantén la barbilla baja y la mirada al frente|Peso muy adelante o manos bajas|Respira normal. Rebota suave sobre las puntas.|b_guard
+m_teep|Teep (patada frontal de empuje)|r|Sube la rodilla y empuja con la planta del pie.|Desde la guardia, sube la rodilla de atrás hacia el pecho;Empuja con la planta del pie hacia el frente, cadera adelante;Recoge la pierna y vuelve a la guardia|Inclinar el torso hacia atrás o patear sin recoger|Exhala al empujar. Control y equilibrio.|m_teep
+m_kick|Patada baja (low kick, sin impacto)|r|Gira la cadera y pasa la pierna con la tibia.|Desde la guardia, pivota sobre el pie de apoyo girando la cadera;Pasa la pierna en arco bajo con la tibia, brazo del mismo lado cae atrás;Vuelve a la guardia sin perder el equilibrio|No pivotar el pie de apoyo o abrir demasiado la cadera|Exhala al patear. Lento primero, luego más rápido.|m_kick
+m_round|Patada circular media (roundhouse)|r|Pivota, gira cadera y pasa la tibia por el aire.|Desde la guardia, da un paso diagonal y pivota sobre el pie de apoyo;Gira cadera y hombro y lanza la pierna en arco con la tibia a la altura de la cintura;Vuelve a la guardia con las manos arriba|Patear con el empeine o perder el equilibrio|Exhala al patear. Practica sin saco hasta tener equilibrio.|m_kick
+m_knee|Rodillazo frontal|r|Empuja la cadera adelante y sube la rodilla.|Desde la guardia, empuja la cadera hacia adelante y sube la rodilla de atrás al frente;Mantén el torso erguido y los brazos abajo, como si tomaras a alguien;Baja la pierna y vuelve a la guardia|Inclinarte atrás o bajar la cadera|Exhala al subir la rodilla.|m_knee
+m_elbow|Codo descendente (sombra)|r|Codo alto, baja en diagonal.|Desde la guardia, sube el codo a la altura de la cara;Baja el codo en diagonal hacia el frente girando el cuerpo;Vuelve a la guardia protegiendo el mentón|Abrir el codo sin girar el cuerpo|Exhala al bajar el codo.|b_hook
+m_combo|Combinación: jab, cross y patada|r|Dos golpes y una patada baja, con control.|Lanza jab y cross;Pivota y lanza la patada circular baja;Vuelve a la guardia y repite|Golpear sin cubrir la cara o patear con la pierna rígida|Exhala en cada golpe y patada.|m_kick
+m_skip|Cuerda (salto con soga)|t|Saltos pequeños sobre las puntas de los pies.|Sostén la cuerda con los codos pegados al cuerpo;Salta con saltos cortos, aterrizando suave en las puntas;Mantén la mirada al frente y los hombros relajados|Saltar muy alto o aterrizar con los talones|Respira normal. Ritmo constante.|b_skip`;
+Object.assign(POSE, {
+  b_guard: [{t: -88, a: [55, -55], fa: [45, -60], l: [70, 100], fl: [115, 80]}],
+  b_jab: [{t: -88, a: [55, -55], fa: [45, -60], l: [70, 100], fl: [115, 80]}, {t: -88, a: [0, 0], fa: [55, -55], l: [70, 100], fl: [115, 80]}],
+  b_cross: [{t: -88, a: [55, -55], fa: [45, -60], l: [70, 100], fl: [115, 80]}, {t: -80, a: [55, -55], fa: [0, 0], l: [70, 100], fl: [112, 80]}],
+  b_hook: [{t: -88, a: [55, -55], fa: [45, -60], l: [70, 100], fl: [115, 80]}, {t: -85, a: [-10, 80], fa: [55, -55], l: [70, 100], fl: [112, 80]}],
+  b_upper: [{t: -88, a: [55, -55], fa: [45, -60], l: [70, 100], fl: [115, 80]}, {t: -85, a: [70, -90], fa: [55, -55], l: [60, 120], fl: [105, 85]}],
+  b_skip: [{t: -90, a: [80, 20], l: [90, 90]}, {t: -90, a: [80, 20], l: [90, 90], fl: [90, 150]}],
+  m_teep: [{t: -88, a: [55, -55], fa: [45, -60], l: [90, 90], fl: [105, 85]}, {t: -95, a: [55, -55], fa: [45, -60], l: [90, 90], fl: [-5, -5]}],
+  m_kick: [{t: -88, a: [55, -55], fa: [45, -60], l: [90, 90], fl: [105, 85]}, {t: -105, a: [55, -55], fa: [45, -60], l: [90, 90], fl: [-10, 0]}],
+  m_knee: [{t: -88, a: [55, -55], fa: [45, -60], l: [90, 90], fl: [105, 85]}, {t: -92, a: [30, -70], fa: [20, -70], l: [90, 90], fl: [-15, 100]}]
+});
+(function () {
+  BOX_RAW.split("\n").forEach(l => {
+    const p = l.split("|"); if (p.length < 8) return;
+    EX[p[0]] = {n: p[1], t: p[2], cue: p[3]};
+    TECH[p[0]] = {pasos: p[4].split(";"), err: p[5], ritmo: p[6]};
+    DRAW[p[0]] = p[7];
+  });
+})();
+DISC.box = {n: "Boxeo", intro: "Técnica de golpeo, guardia y desplazamientos en solitario (sombra y saco). Primero la técnica, después la velocidad.", tips: ["Aprende la guardia y los desplazamientos antes que los golpes.", "Los golpes salen de los pies y la cadera, no solo del brazo.", "Para el saco usa vendas y guantes. Muñeca recta siempre.", "Aquí no hay sparring: para practicar con otra persona busca un gimnasio con instructor."]};
+DISC.muay = {n: "Muay Thai y kickboxing", intro: "Combinaciones de golpes, patadas, rodillas y codos en sombra. Ve lento primero: el equilibrio es lo más importante.", tips: ["Calienta cadera y tobillos antes de patear.", "Pivota el pie de apoyo en cada patada circular.", "Las patadas se practican primero sin fuerza ni saco.", "Sin sparring ni contacto: para eso, busca un gimnasio con instructor."]};
+document.head.insertAdjacentHTML("beforeend","<style>.discs{flex-wrap:wrap}.discs button{flex:0 0 auto}</style>");
+DISC_LIST.push(["box", "Boxeo"], ["muay", "Muay Thai y kickboxing"]);
+ROUTINES.push(
+  {id: "bx1", disc: "box", teen: true, name: "Boxeo desde cero", nivel: "Principiante", min: 15, met: 5, desc: "Guardia, desplazamientos y jab/cross en sombra.", blocks: [["b_stance", 1, 30, 10], ["b_foot", 2, 30, 10], ["b_jab", 3, 15, 15], ["b_cross", 3, 15, 15], ["b_12", 3, 12, 20], ["b_shadow", 2, 60, 20]]},
+  {id: "bx2", disc: "box", teen: true, name: "Sombra de boxeo cardio", nivel: "Intermedio", min: 20, met: 7, desc: "Rounds de sombra con combinaciones y esquivas.", circuit: true, rounds: 3, blocks: [["b_12", 1, 20, 10], ["b_slip", 1, 15, 10], ["b_123", 1, 20, 10], ["b_upper", 1, 15, 10], ["b_shadow", 1, 45, 30]]},
+  {id: "bx3", disc: "box", teen: false, name: "Saco de boxeo", nivel: "Intermedio", min: 20, met: 7.5, desc: "Para quien tiene saco, vendas y guantes.", blocks: [["b_stance", 1, 30, 10], ["b_bag", 4, 60, 30], ["b_123", 3, 15, 30], ["b_hook", 3, 15, 30]]},
+  {id: "mt1", disc: "muay", teen: false, name: "Muay Thai desde cero", nivel: "Principiante", min: 18, met: 5.5, desc: "Guardia, teep, rodilla y patada baja en sombra.", blocks: [["m_stance", 1, 30, 10], ["m_teep", 3, 10, 15], ["m_kick", 3, 10, 20], ["m_knee", 3, 10, 15], ["m_elbow", 2, 10, 15], ["m_combo", 2, 10, 20]]},
+  {id: "mt2", disc: "muay", teen: false, name: "Kickboxing cardio", nivel: "Intermedio", min: 25, met: 7.5, desc: "Combinaciones de golpes y patadas en rounds.", circuit: true, rounds: 3, blocks: [["m_skip", 1, 40, 10], ["b_12", 1, 20, 10], ["m_combo", 1, 15, 10], ["m_knee", 1, 15, 10], ["m_teep", 1, 15, 10], ["b_shadow", 1, 45, 30]]}
+);
 // ---------- Resumen semanal de Ana, gráfico de medidas y avisos ----------
 function weeklyData(offset) {
   const k0 = todayKey(), out = {ent: 0, dias: 0, agua: 0, aguaD: 0, kcal: 0, kcalD: 0, prot: 0, best: null};
@@ -3194,7 +3512,7 @@ function medidasChart() {
 }
 ACT.medsel = b => { VIEW.med = b.dataset.k; render(); };
 // ---------- Secciones plegables ----------
-const PLG_DEF = ["Todas las rutinas", "Test de nivel", "Metas de habilidad", "Tus metas diarias", "Mi fuerza", "Logros", "Reloj y pulso", "Respaldo de tus datos", "Instala SkarlataFit", "Calorías, últimos 7 días", "Cómo leer tu peso", "Permisos"];
+const PLG_DEF = ["Todas las rutinas", "Test de nivel", "Metas de habilidad", "Tus metas diarias", "Mi fuerza", "Logros", "Reloj y pulso", "Respaldo de tus datos", "Instala SkarlataFit", "Calorías, últimos 7 días", "Cómo leer tu peso", "Permisos", "Calorías y macros", "Agua", "Más consejos de Ana"];
 let PLG = {};
 try { PLG = JSON.parse(localStorage.getItem("rh-plegado") || "{}") || {}; } catch (e) { PLG = {}; }
 const plgKey = t => (S.profile ? VIEW.tab : "perfil") + "|" + t;

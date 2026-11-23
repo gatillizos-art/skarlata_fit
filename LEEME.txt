@@ -20,3 +20,10 @@ Sube TODOS los archivos (incluida la carpeta icons y sw.js) y abre la app dos ve
 Secciones plegables: toca el título de cada tarjeta para abrir o cerrar.
 NOVEDADES v11: ejercicios guiados (pasos, errores, ritmo, voz), semana de inicio, hábitos, lecciones, cuestionario, revisión semanal, mate y más líquidos, pantalla de Permisos.
 v12: cronómetro, temporizador, intervalos y Mis rutinas (crear, editar, copiar, ejercicios propios).
+v13 (etapa 1): Hoy con boton grande y anillos, Entrenar por secciones, chat local de Ana.
+
+ETAPA 2 (v14): Yoga (4 rutinas, 19 posturas) y Pilates y movilidad (5 rutinas, 15 ejercicios), todo guiado con pasos, errores y dibujo. En Entrenar: chips Calistenia / Yoga / Pilates y movilidad. Las rutinas suaves también están disponibles en modo juvenil.
+
+ETAPA 3 (v15): Boxeo (3 rutinas) y Muay Thai/kickboxing (2 rutinas), en sombra y saco, sin sparring. 20 ejercicios guiados con pasos, errores, ritmo y dibujo. Si no ves los cambios, cierra y abre la app dos veces.
+
+v16: dibujos afinados (montana, saludo al sol, savasana, natacion).
