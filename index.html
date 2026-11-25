@@ -3436,6 +3436,108 @@ ROUTINES.push(
   {id: "mt1", disc: "muay", teen: false, name: "Muay Thai desde cero", nivel: "Principiante", min: 18, met: 5.5, desc: "Guardia, teep, rodilla y patada baja en sombra.", blocks: [["m_stance", 1, 30, 10], ["m_teep", 3, 10, 15], ["m_kick", 3, 10, 20], ["m_knee", 3, 10, 15], ["m_elbow", 2, 10, 15], ["m_combo", 2, 10, 20]]},
   {id: "mt2", disc: "muay", teen: false, name: "Kickboxing cardio", nivel: "Intermedio", min: 25, met: 7.5, desc: "Combinaciones de golpes y patadas en rounds.", circuit: true, rounds: 3, blocks: [["m_skip", 1, 40, 10], ["b_12", 1, 20, 10], ["m_combo", 1, 15, 10], ["m_knee", 1, 15, 10], ["m_teep", 1, 15, 10], ["b_shadow", 1, 45, 30]]}
 );
+// ---------- Libre: dejar vicios (tabaco, alcohol, videojuegos…) estilo "días libres" ----------
+const VTIPOS = {
+  tab: {n: "Tabaco", ic: "🚬", unit: "cigarros", ask: "Cigarros que fumabas al día", price: "Precio de la cajetilla ($)", pack: 20, hours: false},
+  vap: {n: "Vapeo", ic: "💨", unit: "vapeadas (aprox.)", ask: "Cuántas veces vapeabas al día", price: "Gasto por cada vapeada ($, aprox.)", pack: 1, hours: false},
+  alc: {n: "Alcohol", ic: "🍺", unit: "tragos", ask: "Tragos que tomabas al día (promedio, ej: 0,5)", price: "Precio de un trago ($)", pack: 1, hours: false},
+  jue: {n: "Videojuegos", ic: "🎮", unit: "horas", ask: "Horas al día que jugabas", price: "", pack: 1, hours: true},
+  cel: {n: "Celular y redes", ic: "📱", unit: "horas", ask: "Horas al día de más que usabas", price: "", pack: 1, hours: true},
+  azu: {n: "Azúcar y dulces", ic: "🍬", unit: "porciones", ask: "Porciones al día (dulces, bebidas)", price: "Precio de una porción ($)", pack: 1, hours: false},
+  caf: {n: "Café o energéticas", ic: "☕", unit: "tazas o latas", ask: "Al día", price: "Precio de cada una ($)", pack: 1, hours: false},
+  otr: {n: "Otro", ic: "✋", unit: "veces", ask: "Veces al día", price: "Gasto por vez ($, opcional)", pack: 1, hours: false}
+};
+const VHITOS = [[1 / 24 * 20 / 60 * 0, "", ""], [1, "24 horas", "Primer día completo"], [3, "3 días", "Lo más difícil suele quedar atrás"], [7, "1 semana", "¡Una semana!"], [14, "2 semanas", "Las ganas ya vienen menos seguido"], [30, "1 mes", "Un mes libre"], [90, "3 meses", "Ya es otra rutina"], [180, "6 meses", "Medio año"], [365, "1 año", "Un año libre"]].slice(1);
+const VSALUD = {
+  tab: [[0.014, "20 minutos: baja tu frecuencia cardíaca."], [0.5, "12 a 24 horas: el monóxido de carbono de tu sangre se normaliza."], [14, "2 a 12 semanas: mejora tu circulación y respiras mejor."], [365, "1 año: baja a casi la mitad tu riesgo de enfermedad cardíaca por fumar."]],
+  alc: [[1, "Duermes más profundo en pocos días."], [14, "Más energía y mejor ánimo."], [30, "Tu hígado empieza a recuperarse."]],
+  jue: [[1, "Recuperas horas para dormir, moverte y estar con otras personas."]],
+  cel: [[1, "Recuperas horas para dormir, moverte y estar con otras personas."]]
+};
+const VTIPS = {
+  tab: ["Las ganas intensas duran unos 3 a 5 minutos: respira y espera.", "Cambia el ritual: agua, chicle sin azúcar, caminar 5 minutos.", "Evita por ahora el alcohol y el café en exceso si te hacen querer fumar.", "Cuéntale a alguien que dejaste de fumar."],
+  vap: ["Las ganas pasan en unos minutos: respira y espera.", "Cambia el ritual: agua, chicle sin azúcar o una caminata corta.", "Saca el dispositivo de tu vista y de tu bolso."],
+  alc: ["Ten a mano una bebida sin alcohol para las juntas.", "Planifica qué vas a decir cuando te ofrezcan un trago.", "Evita por ahora los lugares donde sueles tomar.", "Si bebías mucho todos los días, no lo dejes de golpe sin consultar: puede ser peligroso. Habla con un profesional."],
+  jue: ["Pon un horario de juego en vez de prohibirlo del todo.", "Desinstala o saca de la vista los juegos que más te enganchan.", "Reemplaza ese rato por entrenar, salir o dormir mejor."],
+  cel: ["Desactiva notificaciones y deja el celular fuera del dormitorio.", "Usa el temporizador de la app: 25 minutos de enfoque y pausa.", "Cambia las redes por una caminata o una rutina corta."],
+  azu: ["No lo guardes en casa: si no está, es más fácil.", "Ten fruta o yogurt a mano.", "Un antojo dura pocos minutos: toma agua primero."],
+  caf: ["Baja de a poco para evitar dolor de cabeza.", "Reemplaza por té o agua con limón.", "Duerme bien: el cansancio hace pedir más cafeína."],
+  otr: ["Anota qué lo dispara: aburrimiento, estrés, compañía.", "Reemplaza ese momento con una acción corta: caminar, respirar, estirar.", "Pide apoyo a alguien de confianza."]
+};
+const VFRASES = ["Cada minuto cuenta. No tienes que ser perfecta o perfecto, solo seguir.", "Las ganas pasan aunque no hagas nada. Dales 10 minutos.", "Estás construyendo algo que se nota en semanas, no en un día.", "Si hoy fue difícil, igual cuenta: sigues aquí.", "Respira. Ya lo has logrado antes hoy."];
+const VIC = () => { const p = S.profile; if (!p.vic) p.vic = {list: [], cr: 0}; return p.vic; };
+const vDays = v => (Date.now() - v.start) / 864e5;
+function vDur(v) { const m = Math.max(0, Math.floor((Date.now() - v.start) / 6e4)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mi = m % 60; return {d, h, mi}; }
+function vAhorro(v) { const t = VTIPOS[v.tipo] || VTIPOS.otr, d = vDays(v); return t.hours ? {h: d * (v.perDay || 0)} : {clp: d * (v.perDay || 0) * (v.cost || 0) / (t.pack || 1), u: d * (v.perDay || 0)}; }
+function vCard(v) {
+  const t = VTIPOS[v.tipo] || VTIPOS.otr, dur = vDur(v), a = vAhorro(v), name = v.tipo === "otr" || v.nom ? (v.nom || t.n) : t.n;
+  const next = VHITOS.find(h => vDays(v) < h[0]), prev = VHITOS.filter(h => vDays(v) >= h[0]).pop();
+  const pct = next ? Math.min(100, Math.round(vDays(v) / next[0] * 100)) : 100;
+  const saved = t.hours ? fmt(a.h, 1) + " horas recuperadas" : (v.cost ? "$" + fmt(a.clp) + " ahorrados · " : "") + fmt(a.u) + " " + t.unit + " que no consumiste";
+  const salud = (VSALUD[v.tipo] || []).filter(x => vDays(v) >= x[0]).pop();
+  return '<div class="card stack s8"><div class="row between"><h3>' + t.ic + " " + esc(name) + '</h3><span class="chip">récord ' + fmt(Math.max(v.best || 0, vDays(v)), 0) + ' d</span></div>' +
+    '<div style="text-align:center;padding:6px 0"><div style="font:700 44px var(--display);line-height:1">' + dur.d + '<span style="font-size:18px"> días</span></div><div class="small muted">' + dur.h + " h " + dur.mi + " min sin " + esc(name.toLowerCase()) + "</div></div>" +
+    '<div class="bar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100" style="height:8px;background:var(--line);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:' + pct + '%;background:var(--accent)"></i></div>' +
+    '<p class="small">' + (next ? "Próximo hito: <b>" + next[1] + "</b> (" + pct + "%)" : "¡Pasaste todos los hitos!") + "</p>" +
+    '<p class="small"><b>' + saved + "</b></p>" + (salud ? '<p class="small muted">' + esc(salud[1]) + "</p>" : "") +
+    '<div class="row wrap"><button class="btn primary sm" data-act="vsos" data-id="' + v.id + '">Tengo ganas</button><button class="btn sm" data-act="vrec" data-id="' + v.id + '">Tuve una recaída</button><button class="btn ghost sm" data-act="vdel" data-id="' + v.id + '">Quitar</button></div></div>';
+}
+RENDER.libre = () => {
+  const vi = VIC(), menor = esMenor(S.profile);
+  const hitos = vi.list.length ? '<div class="card stack s8"><h3>Hitos y logros</h3>' + vi.list.map(v => {
+    const t = VTIPOS[v.tipo] || VTIPOS.otr;
+    return '<div><b class="small">' + t.ic + " " + esc(v.nom || t.n) + '</b><div class="row wrap" style="gap:6px;margin-top:4px">' + VHITOS.map(h => '<span class="chip" style="' + (vDays(v) >= h[0] ? "background:var(--accent);color:var(--bg)" : "opacity:.45") + '">' + (vDays(v) >= h[0] ? "✓ " : "") + h[1] + "</span>").join("") + "</div></div>";
+  }).join("") + "</div>" : "";
+  const tips = vi.list.length ? '<div class="card stack s8"><h3>Consejos para resistir</h3>' + Array.from(new Set(vi.list.flatMap(v => VTIPS[v.tipo] || VTIPS.otr))).slice(0, 6).map(x => '<p class="small">• ' + esc(x) + "</p>").join("") + "</div>" : "";
+  const rel = vi.list.some(v => (v.rel || []).length) ? '<div class="card stack s8"><h3>Recaídas y aprendizajes</h3>' + vi.list.flatMap(v => (v.rel || []).map(r => ({v, r}))).sort((a, b) => b.r.t - a.r.t).slice(0, 6).map(x => '<p class="small"><b>' + esc((VTIPOS[x.v.tipo] || VTIPOS.otr).n) + "</b> · " + longDate(keyOf(new Date(x.r.t))) + " · duró " + fmt(x.r.d, 0) + " d" + (x.r.note ? "<br>" + esc(x.r.note) : "") + "</p>").join("") + '<p class="note">Una recaída no borra lo avanzado: es información para la próxima vez.</p></div>' : "";
+  return '<div class="stack"><h1>Libre</h1><p class="small muted">Deja un hábito paso a paso. Contamos tus días libres, lo que ahorras y te acompañamos cuando vienen las ganas.</p>' +
+    (vi.list.length ? vi.list.map(vCard).join("") : '<div class="card stack s8"><h3>Empieza con un hábito</h3><p class="small">Elige qué quieres dejar: tabaco, vapeo, alcohol, videojuegos, celular, azúcar, café u otro.</p></div>') +
+    '<button class="btn primary block" data-act="vadd">+ Dejar un hábito</button>' + hitos + tips + rel +
+    '<div class="card stack s8"><h3>Ayuda profesional</h3><p class="small">Dejar un hábito puede ser difícil, y pedir ayuda es parte del proceso.</p><p class="small">• Chile, drogas y alcohol (SENDA): <b>1412</b><br>• Salud Responde (MINSAL), también para dejar de fumar: <b>600 360 7777</b></p><p class="note">Si tomabas alcohol en grandes cantidades todos los días, no lo dejes de golpe sin hablar antes con un médico: puede ser peligroso. Si sientes que no puedes sola o solo, o que estás en crisis, busca apoyo de inmediato.</p></div></div>';
+};
+ACT.vadd = () => openSheet('<div class="stack"><div class="row between"><h2>Dejar un hábito</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div>' +
+  '<label class="f">¿Qué quieres dejar?<select id="v-t" data-in="vtipo">' + Object.keys(VTIPOS).map(k => '<option value="' + k + '">' + VTIPOS[k].ic + " " + VTIPOS[k].n + "</option>").join("") + "</select></label>" +
+  '<label class="f" id="v-nw" hidden>Nombre<input id="v-n" maxlength="30" placeholder="Ej: Comer de noche"></label>' +
+  '<label class="f"><span id="v-al">' + VTIPOS.tab.ask + '</span><input id="v-pd" inputmode="decimal" placeholder="Ej: 10"></label>' +
+  '<label class="f" id="v-cw"><span id="v-cl">' + VTIPOS.tab.price + '</span><input id="v-c" inputmode="decimal" placeholder="Ej: 6500"></label>' +
+  '<label class="f">¿Hace cuántos días lo dejaste? (0 = empiezo hoy)<input id="v-d" inputmode="numeric" value="0"></label>' +
+  '<p class="note" id="v-warn" hidden>Si bebías mucho todos los días, no lo dejes de golpe sin consultar a un médico: puede ser peligroso.</p>' +
+  '<button class="btn primary block" data-act="vsave">Empezar</button></div>');
+INP.vtipo = el => { const t = VTIPOS[el.value]; $("#v-al").textContent = t.ask; $("#v-cl").textContent = t.price; $("#v-cw").hidden = t.hours; $("#v-nw").hidden = el.value !== "otr"; $("#v-warn").hidden = el.value !== "alc"; };
+ACT.vsave = () => {
+  const tipo = $("#v-t").value, t = VTIPOS[tipo], pd = num($("#v-pd").value), c = t.hours ? 0 : num($("#v-c").value), ago = Math.max(0, num($("#v-d").value));
+  if (!(pd > 0)) { toast("Escribe cuánto era al día (ej: 10)"); return; }
+  VIC().list.push({id: "v" + Date.now().toString(36), tipo, nom: tipo === "otr" ? ($("#v-n").value.trim() || "Mi hábito") : "", perDay: pd, cost: c, start: Date.now() - ago * 864e5, best: 0, rel: []});
+  saveProfile(); closeSheet(); render(); toast("¡Empezaste! El primer día es el más importante");
+};
+const vById = id => VIC().list.find(v => v.id === id);
+ACT.vdel = b => openSheet('<div class="stack"><h2>¿Quitar este hábito?</h2><p class="small">Se borra su contador y su historial.</p><div class="row wrap"><button class="btn danger" data-act="vdelok" data-id="' + b.dataset.id + '">Quitar</button><button class="btn" data-act="close">Cancelar</button></div></div>');
+ACT.vdelok = b => { const vi = VIC(); vi.list = vi.list.filter(v => v.id !== b.dataset.id); saveProfile(); closeSheet(); render(); };
+ACT.vrec = b => { const v = vById(b.dataset.id); if (!v) return; openSheet('<div class="stack"><h2>Tuve una recaída</h2><p class="small">Pasa, y no te quita lo avanzado: llevabas <b>' + fmt(vDays(v), 0) + ' días</b>. Ese récord se guarda.</p><label class="f">¿Qué pasó? (opcional, para aprender)<input id="v-note" maxlength="120" placeholder="Ej: fiesta, estrés, aburrimiento"></label><button class="btn primary block" data-act="vrecok" data-id="' + v.id + '">Reiniciar el contador</button><button class="btn block" data-act="close">Cancelar</button></div>'); };
+ACT.vrecok = b => { const v = vById(b.dataset.id); if (!v) return; const d = vDays(v); v.best = Math.max(v.best || 0, d); (v.rel = v.rel || []).push({t: Date.now(), d, note: ($("#v-note").value || "").trim()}); v.start = Date.now(); saveProfile(); closeSheet(); render(); toast("Empezamos de nuevo. Lo aprendido se queda contigo"); };
+// SOS: respiración 4-4-6 + espera de 10 minutos
+const SOS = {end: 0, id: null};
+ACT.vsos = b => {
+  const v = vById(b.dataset.id); if (!v) return; SOS.end = Date.now() + 600000; SOS.id = v.id;
+  const tips = VTIPS[v.tipo] || VTIPS.otr;
+  openSheet('<div class="stack"><div class="row between"><h2>Tengo ganas</h2><button class="x" data-act="close" aria-label="Cerrar">×</button></div><p class="small">Las ganas suben, llegan a un punto y bajan solas. Solo espera 10 minutos.</p>' +
+    '<div style="text-align:center"><div id="sos-b" style="font:700 22px var(--display);padding:26px 0">Inhala…</div><div id="sos-t" style="font:700 40px var(--display)">10:00</div></div>' +
+    '<p class="small" id="sos-f">' + esc(VFRASES[Math.floor(Math.random() * VFRASES.length)]) + "</p>" +
+    '<div class="card stack s8"><b class="small">Mientras tanto</b>' + tips.slice(0, 3).map(x => '<p class="small">• ' + esc(x) + "</p>").join("") + "</div>" +
+    '<button class="btn primary block" data-act="vsosok">Ya pasaron las ganas</button></div>');
+  const tick = () => { const bt = $("#sos-b"); if (!bt) return; const left = Math.max(0, SOS.end - Date.now()), s = Math.ceil(left / 1000), ph = Math.floor((Date.now() / 1000) % 14);
+    $("#sos-t").textContent = Math.floor(s / 60) + ":" + pad(s % 60); bt.textContent = ph < 4 ? "Inhala…" : ph < 8 ? "Mantén…" : "Exhala lento…";
+    if (left <= 0) { $("#sos-f").textContent = "¡Lo lograste! Pasaron los 10 minutos."; return; } setTimeout(tick, 500); };
+  tick();
+};
+ACT.vsosok = () => { VIC().cr = (VIC().cr || 0) + 1; saveProfile(); closeSheet(); render(); toast("¡Resististe! Van " + VIC().cr + " veces"); };
+// Pestaña nueva en la barra inferior
+(function () {
+  const nav = $("#tabs"); if (!nav || nav.querySelector('[data-tab="libre"]')) return;
+  const b = document.createElement("button"); b.setAttribute("data-act", "tab"); b.setAttribute("data-tab", "libre");
+  b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Libre';
+  const ana = nav.querySelector('[data-tab="ana"]'); nav.insertBefore(b, ana);
+})();
 // ---------- Resumen semanal de Ana, gráfico de medidas y avisos ----------
 function weeklyData(offset) {
   const k0 = todayKey(), out = {ent: 0, dias: 0, agua: 0, aguaD: 0, kcal: 0, kcalD: 0, prot: 0, best: null};

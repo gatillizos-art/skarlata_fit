@@ -27,3 +27,5 @@ ETAPA 2 (v14): Yoga (4 rutinas, 19 posturas) y Pilates y movilidad (5 rutinas, 1
 ETAPA 3 (v15): Boxeo (3 rutinas) y Muay Thai/kickboxing (2 rutinas), en sombra y saco, sin sparring. 20 ejercicios guiados con pasos, errores, ritmo y dibujo. Si no ves los cambios, cierra y abre la app dos veces.
 
 v16: dibujos afinados (montana, saludo al sol, savasana, natacion).
+
+v17: pestana nueva "Libre" para dejar habitos (tabaco, vapeo, alcohol, videojuegos, celular, azucar, cafe, otro): dias libres, ahorro, boton Tengo ganas, hitos, recaidas sin culpa.
